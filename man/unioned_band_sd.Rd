@@ -18,7 +18,7 @@ This is to provide proper scaling for integral approximation.}
 Double.
 }
 \description{
-Used in the denominator of band redundancy, unioned band SD is the
+Used in the denominator of band similarity, unioned band SD is the
 standard deviation of the distances of each spectra constrained to the
 union of two neighboring frequency bands to the collapsed measure of
 power computed over those two bands.

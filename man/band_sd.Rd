@@ -21,7 +21,7 @@ This is to provide proper scaling for integral approximation.}
 Double.
 }
 \description{
-Used in the numerator of band redundancy, band standard deviation is defined
+Used in the numerator of band similarity, band standard deviation is defined
 as the standard deviation of the distances of each spectra constrained to a
 frequency band to the collapsed measure of power computed within that band.
 }

@@ -1,6 +1,6 @@
 #' Unioned band standard deviation
 #'
-#' Used in the denominator of band redundancy, unioned band SD is the
+#' Used in the denominator of band similarity, unioned band SD is the
 #' standard deviation of the distances of each spectra constrained to the
 #' union of two neighboring frequency bands to the collapsed measure of
 #' power computed over those two bands.
@@ -19,7 +19,7 @@ unioned_band_sd <- function(union_band_spec, nfreq) {
 
 #' (Single) Band standard deviation
 #'
-#' Used in the numerator of band redundancy, band standard deviation is defined
+#' Used in the numerator of band similarity, band standard deviation is defined
 #' as the standard deviation of the distances of each spectra constrained to a
 #' frequency band to the collapsed measure of power computed within that band.
 #'
@@ -36,11 +36,11 @@ band_sd <- function(band_spec, band_collapsed, nfreq) {
   sqrt(sum((band_spec - band_collapsed)^2) / (2 * (nfreq + 1)))
 }
 
-#' Band redundancy
+#' Band similarity
 #'
-#' Band redundancy is the ratio of within-band standard deviation of distances
+#' Band similarity is the ratio of within-band standard deviation of distances
 #' to the same standard deviation computed if the bands were union. Higher
-#' redundancy means that these two quantities are similar in terms of loss
+#' similarity means that these two quantities are similar in terms of loss
 #' reduction, suggesting that these two bands could be union without significant
 #' loss in approximation quality.
 #'
@@ -58,7 +58,7 @@ band_sd <- function(band_spec, band_collapsed, nfreq) {
 #' This is to provide proper scaling for integral approximation.
 #'
 #' @return Double.
-band_redundancy <- function(band_spec1, band_spec2, collapsed1, collapsed2,
+band_similarity <- function(band_spec1, band_spec2, collapsed1, collapsed2,
                            nfreq) {
   # compute single band SDs
   sd1 <- band_sd(band_spec1, collapsed1, nfreq)
@@ -70,9 +70,9 @@ band_redundancy <- function(band_spec1, band_spec2, collapsed1, collapsed2,
   return((sd1 + sd2) / d)
 }
 
-#' Average within-cluster band redundancy
+#' Average within-cluster band similarity
 #'
-#' Average the redundancy of each band with its right neighbor over all
+#' Average the similarity of each band with its right neighbor over all
 #' bands associated to a single cluster.
 #'
 #' @param clust_spec A matrix of shape (`nfreq`, `nrep_clust`) where
@@ -83,11 +83,11 @@ band_redundancy <- function(band_spec1, band_spec2, collapsed1, collapsed2,
 #' @param collapsed Vector of collapsed measures for this cluster.
 #'
 #' @return Double.
-avg_clust_band_redundancy <- function(clust_spec, endpoints_index, collapsed) {
+avg_clust_band_similarity <- function(clust_spec, endpoints_index, collapsed) {
   nbands <- length(collapsed); nfreq <- dim(clust_spec)[1]
 
-  # compute redundancy of each band with its right neighboring band
-  red_vec <- rep(0, nbands - 1)
+  # compute similarity of each band with its right neighboring band
+  sim_vec <- rep(0, nbands - 1)
   for (b in 1:(nbands - 1)) {
     # endpoints, band spectra and collapsed measures for left band
     left_endpoint1 <- endpoints_index[b]
@@ -101,19 +101,19 @@ avg_clust_band_redundancy <- function(clust_spec, endpoints_index, collapsed) {
     band_spec2 <- clust_spec[left_endpoint2:(right_endpoint2 - 1), , drop = F]
     collapsed2 <- collapsed[b + 1]
 
-    # redundancy between left and right bands
-    red_vec[b] <- band_redundancy(band_spec1, band_spec2,
+    # similarity between left and right bands
+    sim_vec[b] <- band_similarity(band_spec1, band_spec2,
                                   collapsed1, collapsed2,
                                   nfreq)
   }
-  # compute average redundancy over nbands
-  return(sum(red_vec) / nbands)
+  # compute average similarity over nbands
+  return(sum(sim_vec) / nbands)
 }
 
-#' Average band redundancy across all clusters
+#' Average band similarity across all clusters
 #'
 #' @param spec A matrix of shape `(nfreq, nrep)` containing all spectra across
-#' all clusters being comapred.
+#' all clusters being compared.
 #' @param labels Vector of labels.
 #' @param endpoints_index A matrix of shape `(nclust, nbands - 1)` with the
 #' Fourier indices of the frequency band boundaries for each cluster. It is
@@ -124,12 +124,12 @@ avg_clust_band_redundancy <- function(clust_spec, endpoints_index, collapsed) {
 #' measures of each cluster.
 #'
 #' @return Double.
-avg_global_band_redundancy <- function(spec, labels, endpoints_index, collapsed) {
+avg_global_band_similarity <- function(spec, labels, endpoints_index, collapsed) {
   ulabels <- unique(labels)
   n_nonnempty_clust <- length(ulabels)
   nclust <- dim(endpoints_index)[1]; nfreq <- dim(spec)[1]
 
-  red_vec <- rep(0, nclust)
+  sim_vec <- rep(0, nclust)
   for (i in ulabels) {
     # set aside spectra, endpoints (which are then padded), and collapsed
     # measures for cluster i
@@ -137,10 +137,10 @@ avg_global_band_redundancy <- function(spec, labels, endpoints_index, collapsed)
     endpoints_index_i <- c(1, endpoints_index[i, ], nfreq + 1)
     collapsed_i <- collapsed[i, ]
 
-    # average band redundancy for cluster i
-    red_vec[i] <- avg_clust_band_redundancy(clust_spec,
+    # average band similarity for cluster i
+    sim_vec[i] <- avg_clust_band_similarity(clust_spec,
                                             endpoints_index_i,
                                             collapsed_i)
   }
-  return(mean(red_vec))
+  return(mean(sim_vec))
 }
