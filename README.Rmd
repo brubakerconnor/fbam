@@ -4,6 +4,9 @@ output: github_document
 
 # fbam
 
+[![DOI](https://zenodo.org/badge/823447177.svg)](https://zenodo.org/doi/10.5281/zenodo.12631845)
+
+
 Frequency Band Analysis for Multiple Stationary Time Series
 
 ## Overview
