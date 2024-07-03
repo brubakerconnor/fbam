@@ -151,17 +151,11 @@ fbam <- function(X,
   # compute selection index for each solution to find "best" solution
   if (nclust_grid_size + nbands_grid_size > 2) {
     current_best <- grid[[1]][[1]]
-    current_best_si <- selection_index(current_best$spec,
-                                       current_best$labels,
-                                       current_best$endpoints_index,
-                                       current_best$collapsed)
+    current_best_si <- grid[[1]][[1]]$si
     for (j in 1:nclust_grid_size) {
       for (b in 1:nbands_grid_size) {
         current_out <- grid[[j]][[b]]
-        current_out_si <- selection_index(current_out$spec,
-                                          current_out$labels,
-                                          current_out$endpoints_index,
-                                          current_out$collapsed)
+        current_out_si <- grid[[j]][[b]]$si
         if (current_out_si < current_best_si) {
           current_best <- current_out; current_best_si <- current_out_si
         }

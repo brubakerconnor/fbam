@@ -257,6 +257,10 @@ ga <- function(X, nclust, nbands, popsize = 50, pop = NULL,
   endpoints <- endpoints_index
   for (j in 1:nclust) endpoints[j, ] <- mtfreq[endpoints_index[j, ]]
   collapsed <- avg_collapsed_by_index(spec, endpoints_index, labels)
+
+  # compute internal validation index
+  si <- selection_index(spec, labels, endpoints_index, collapsed)
+
   return(list(
     X = X,
     spec = spec,
@@ -264,10 +268,12 @@ ga <- function(X, nclust, nbands, popsize = 50, pop = NULL,
     endpoints_index = endpoints_index,
     endpoints = endpoints,
     collapsed = collapsed,
+    rep_collapsed = rep_collapsed_by_index(spec, endpoints_index, labels),
     loss = 1 / fitness_values[which.max(fitness_values)],
     avgfit = avgfit[1:(gennum + 1)],
     maxfit = maxfit[1:(gennum + 1)],
     ninfeasible = ninfeasible[1:(gennum + 1)],
+    si = si,
     params = list(
       nclust = nclust,
       nbands = nbands,

@@ -14,7 +14,7 @@
 #' @return Double.
 selection_index <- function(spec, labels, endpoints_index, collapsed) {
   nclust <- dim(endpoints_index)[1]
-  band_index <- avg_global_band_redundancy(spec, labels,
+  band_index <- avg_global_band_similarity(spec, labels,
                                            endpoints_index, collapsed)
   if (nclust > 1) {
     clust_index <- avg_clust_similarity(spec, labels,
