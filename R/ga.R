@@ -92,7 +92,7 @@ ga <- function(X, nclust, nbands, popsize = 50, pop = NULL,
     collapsed_range <- seq(from = 0.2 * max(spec),
                            to = 0.01 * sd(spec),
                            length = maxgen)
-  } else if (is.integer(collapsed_range)) {
+  } else if (is.double(collapsed_range)) {
     # use same value for each generation
     collapsed_range <- rep(collapsed_range, maxgen)
   } else if (is.vector(collapsed_range)) {
