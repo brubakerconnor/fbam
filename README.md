@@ -1,5 +1,7 @@
 ## Frequency Band Analysis for Multiple Stationary Time Series (FBAM)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13397030.svg)](https://doi.org/10.5281/zenodo.13397030)
+
 This repository contains code that implements the genetic algorithm for 
 optimization of the FBAM objective function and for replicating the simulation
 studies and application to gait variability data described in the article and
