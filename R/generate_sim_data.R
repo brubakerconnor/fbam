@@ -78,7 +78,7 @@ model1 <- function(nrep, len) {
   x <- spec_sim(rbind(spec, spec[dim(spec)[1]:1, ]))
 
   # MT spectral estimates
-  mtout <- fbam::sine_multitaper(x, ntapers = floor(sqrt(len / 2)))
+  mtout <- sine_multitaper(x, ntapers = floor(sqrt(len / 2)))
 
   return(list(x = x, labels = labels, freq = freq, spec = spec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
@@ -134,7 +134,7 @@ model2 <- function(nrep, len, peaks, bandwidths, sd, peak_ranges, bw_ranges, sd_
   }
 
   # multitaper spectral estimates with ntapers = floor(sqrt(len))
-  mtout <- fbam::sine_multitaper(x)
+  mtout <- sine_multitaper(x)
 
   return(list(x = x, labels = labels, freq = freq, spec = spec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
@@ -224,7 +224,7 @@ model3 <- function(nrep, len) {
   }
 
   ## multitaper spectral estimates with n_tapers = floor(sqrt(len))
-  mtout <- fbam::sine_multitaper(x)
+  mtout <- sine_multitaper(x)
 
   return(list(x = x, labels = labels, freq = freq, spec = spec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
