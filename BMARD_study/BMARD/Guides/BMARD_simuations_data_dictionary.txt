@@ -1,0 +1,19 @@
+Simulations data dictionary described in section 3 
+
+There are 3 data bases, each contains a matrix with the periodograms
+obtained from 1000 time series each time series was generated of size 500
+the original periodograms have 250 values and the last value is discarded.
+Then, the matrix size is 1000 rows X 249 Columns.
+
+Databases names:
+pgrammatrixAR2.rds
+pgrammatrixAR12.rds
+pgrammatrixMA4.rds
+
+read it through the sentence:
+readRDS("YOURPATH/BASENAME.rds")
+
+The frequency values can be replicated from the next sentence: 
+seq(.002,.498,by=.002)
+
+
