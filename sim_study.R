@@ -95,7 +95,7 @@ for (n in 1:nsim) {
     cat("Data generation completed in", format(Sys.time() - s), "\n")
 
     s <- Sys.time(); cat("Running FBAM on generated data...\n")
-    fit <- fbam(X = data$x, nclust_grid = 2:4, nbands_grid = 2:4,
+    fit <- fbam(X = data$x, nclust_grid = 2:6, nbands_grid = 2:6,
                 pcrossover = pcrossover, pmutate = pmutate,
                 endpoint_range = endpoint_range,
                 collapsed_range = collapsed_range)
