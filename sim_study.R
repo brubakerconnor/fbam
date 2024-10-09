@@ -23,6 +23,9 @@ pmutate <- as.double(args[8])
 endpoint_range <- as.integer(args[9])
 collapsed_range <- as.double(args[10])
 
+# make sure results directory exists
+if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
+
 # set seed for reproducibility
 set.seed(451)
 source("R/fbam.R") # functions for optimization
@@ -63,6 +66,9 @@ while (is.numeric(nattempt)) {
   nattempt <- tryCatch({
     cl <- parallelly::makeClusterPSOCK(ncores)
     doParallel::registerDoParallel(cl)
+    parallel::clusterCall(cl, function() {
+      source('R/fbam.R'); source('R/generate_sim_data.R')
+    })  # make needed functions available to each worker
     cat("Cluster creation succesful.\n")
   }, error = function(e) {
     message("attempt: ", nattempt, " ", conditionMessage(e))
@@ -89,7 +95,7 @@ for (n in 1:nsim) {
     cat("Data generation completed in", format(Sys.time() - s), "\n")
 
     s <- Sys.time(); cat("Running FBAM on generated data...\n")
-    fit <- fbam(X = data$x, nclust_grid = 2:6, nbands_grid = 2:6,
+    fit <- fbam(X = data$x, nclust_grid = 2:4, nbands_grid = 2:4,
                 pcrossover = pcrossover, pmutate = pmutate,
                 endpoint_range = endpoint_range,
                 collapsed_range = collapsed_range)
