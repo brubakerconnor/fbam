@@ -8,7 +8,7 @@ fbam <- function(X, nclust_grid, nbands_grid, parallel = TRUE, popsize = 50,
                  ntapers = floor(sqrt(dim(X)[1])), verbose = TRUE) {
 
   # enable parallelization, if specified
-  if (parallel) {
+  if (parallel & !foreach::getDoParRegistered()) {
     num_cores <- parallel::detectCores() - 1
     cat("Registering a cluster with ", num_cores, " workers.\n")
     cl <- parallel::makeCluster(num_cores)
@@ -16,6 +16,8 @@ fbam <- function(X, nclust_grid, nbands_grid, parallel = TRUE, popsize = 50,
     parallel::clusterCall(cl, function() {
       library(doParallel); source('R/fbam.R')
     })
+  } else if (foreach::getDoParRegistered()) {
+    message("Using previously registered cluster.")
   } else {
     message("Parallelization not specified. Optimizing sequentially.")
   }
@@ -47,7 +49,7 @@ fbam <- function(X, nclust_grid, nbands_grid, parallel = TRUE, popsize = 50,
         verbose = FALSE)
       )
     }
-  parallel::stopCluster(cl)
+  # parallel::stopCluster(cl)
 
   # compute selection index for each solution to find "best" solution
   # if more than one pair of values for clusters and bands were provided
