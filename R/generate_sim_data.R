@@ -7,43 +7,34 @@ generate_simulation_data <- function(model_name, nrep, len) {
 }
 
 #### model 1 ###################################################################
-# single step function
-# x - frequencies
-# breaks - vector of breakpoints; assumed between min(x) and max(x)
-# values - function values on the sub-intervals defined by breaks
-step_function <- function(x, breaks, values) {
-  xmin <- min(x); xmax <- max(x)
-  breaks <- sort(c(xmin, xmax, breaks))
-  y <- rep(values[1], length(x))
-  for(i in 2:(length(breaks) - 1)) {
-    y[x >= breaks[i]] <- values[i]
+# piecewise smooth step function
+# x         inputs to at which to evaluate function
+# values    vector of length L
+# breaks    vector of length L-1
+# delta     double, spacing around breaks for cubic spline
+pws_step <- function(x, values, breaks, delta = 0.025) {
+  coefs <- matrix(nrow = length(breaks), ncol = 4)
+  for (i in 1:length(breaks)) {
+    left <- (breaks[i] - delta/2); right <- (breaks[i] + delta/2)
+    A <- matrix(c(
+      left^3, left^2, left, 1,
+      right^3, right^2, right, 1,
+      3 * left^2, 2 * left, 1, 0,
+      3 * right^2, 2 * right, 1, 0
+    ), nrow = 4, ncol = 4, byrow = TRUE)
+    coefs[i, ] <- solve(A, c(values[i], values[i + 1], 0, 0))
+  }
+  y <- rep(values[length(values)], length(x))
+  marks <- sort(c(0, breaks - (delta/2), breaks + (delta/2), 0.5))
+  for (i in 1:length(breaks)) {
+    ind <- 2 * (i - 1) + 1
+    y[x >= marks[ind] & x < marks[ind + 1]] <- values[i]
+    x_gap <- x[x >= marks[ind + 1] & x < marks[ind + 2]]
+    y[x %in% x_gap] <- matrix(c(
+      x_gap^3, x_gap^2, x_gap, rep(1, length(x_gap))
+    ), ncol = 4) %*% coefs[i, ]
   }
   return(y)
-}
-
-# cluster of step functions such that the breaks and values have replicate
-# specific uniformly distributed deviations from a marginal value
-# nrep - number of time series to generate
-# x - frequencies
-# breaks - vector of (marginal) breakpoints; assumed between min(x) and max(x)
-# values - (marginal) function values on the sub-intervals defined by breaks
-# breaks_width - double; controls range of the uniformly distributed noise
-#   added to each of the marginal breakpoints defined in breaks
-# values_width - double; controls range of the uniformly distributed noise
-#   added to each of the marginal breakpoints defined in breaks
-clust_step_function <- function(nrep, x, breaks, values, breaks_width,
-                                values_width) {
-  spec <- matrix(nrow = length(x), ncol = nrep)
-  for (k in 1:nrep) {
-    breaks_k <- breaks + runif(length(breaks),
-                               min = -breaks_width / 2,
-                               max = breaks_width / 2)
-    values_k <- values + runif(length(values),
-                               min = -values_width / 2,
-                               max = values_width / 2)
-    spec[, k] <- step_function(x, breaks_k, values_k)
-  }
-  return(spec)
 }
 
 # generate data from model 1
@@ -52,27 +43,42 @@ clust_step_function <- function(nrep, x, breaks, values, breaks_width,
 model1 <- function(nrep, len) {
   # model parameters
   # locations of marginal breakpoints
-  breaks1 <- c(0.1, 0.25) # lower
-  breaks2 <- c(0.2, 0.3) # middle
-  breaks3 <- c(0.25, 0.4) # upper
-  breaks_width <- 0.02
+  breaks <- matrix(c(
+    0.1, 0.25, #lower
+    0.2, 0.3, #middle
+    0.25, 0.4 #upper
+  ), nrow = 3, byrow = TRUE)
+  delta1 <- 0.025  # spacing for cubic spline
 
   # marginal values of the constant segments
-  values1 <- c(15, 7.5, 1) # lower
-  values2 <- c(25, 12.5, 1) # middle
-  values3 <- c(35, 17.5, 1) # upper
-  values_widths <- c(0.5, 0.75, 0.25)
+  values <- matrix(c(
+    15, 7.5, 2, #lower
+    25, 12.5, 4, #middle
+    35, 17.5, 6 #upper
+  ), nrow = 3, byrow = TRUE)
+  delta2 <- 2
 
   # generate theoretical spectra
   labels <- rep(1:3, each = nrep)
   freq <- seq(0, 0.5, length = floor(len / 2))
-  spec1 <- clust_step_function(nrep, freq, breaks1, values1,
-                               breaks_width, values_widths[1])
-  spec2 <- clust_step_function(nrep, freq, breaks2, values2,
-                               breaks_width, values_widths[2])
-  spec3 <- clust_step_function(nrep, freq, breaks3, values3,
-                               breaks_width, values_widths[3])
-  spec <- cbind(spec1, spec2, spec3)
+  # spec1 <- clust_step_function(nrep, freq, breaks1, values1,
+  #                              breaks_width, values_widths[1])
+  # spec2 <- clust_step_function(nrep, freq, breaks2, values2,
+  #                              breaks_width, values_widths[2])
+  # spec3 <- clust_step_function(nrep, freq, breaks3, values3,
+  #                              breaks_width, values_widths[3])
+  # spec <- cbind(spec1, spec2, spec3)
+  spec <- matrix(nrow = floor(len / 2), ncol = 3 * nrep)
+  for (j in 1:3) {
+    for (k in 1:nrep) {
+      spec[, nrep * (j - 1) + k] <- pws_step(
+        freq,
+        values[j, ] + runif(ncol(values), min = -delta2, max = delta2),
+        breaks[j, ],
+        delta1
+      )
+    }
+  }
 
   # time series realizations
   x <- spec_sim(rbind(spec, spec[dim(spec)[1]:1, ]))
@@ -157,8 +163,8 @@ model2a <- function(nrep, len) {
 
 # model2b - medium overlap between peaks
 model2b <- function(nrep, len) {
-  peaks <- c(0.22, 0.25, 0.28)
-  bws <- c(0.15, 0.165, 0.18)
+  peaks <- c(0.21, 0.25, 0.29)
+  bws <- c(0.155, 0.15, 0.155)
   sd <- rep(2.25, 3)
   peak_ranges <- rep(0.01, 3)
   bw_ranges <- rep(0.005, 3)
@@ -172,8 +178,8 @@ model2b <- function(nrep, len) {
 
 # model2c - least overlap between peaks
 model2c <- function(nrep, len) {
-  peaks <- c(0.21, 0.25, 0.29)
-  bws <- c(0.15, 0.17, 0.20)
+  peaks <- c(0.19, 0.25, 0.31)
+  bws <- c(0.165, 0.15, 0.165)
   sd <- rep(2.25, 3)
   peak_ranges <- rep(0.01, 3)
   bw_ranges <- rep(0.005, 3)
@@ -184,7 +190,6 @@ model2c <- function(nrep, len) {
                 sd_ranges = sd_ranges
   ))
 }
-
 
 #### model 3 ###################################################################
 # AR(1) theoretical spectrum
