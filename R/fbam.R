@@ -705,7 +705,7 @@ clust_dist <- function(endpoints_index1, endpoints_index2, collapsed1,
   expanded1 <- rep(collapsed1, diff(endpoints_index1))
   expanded2 <- rep(collapsed2, diff(endpoints_index2))
   nfreq <- length(expanded1)
-  sqrt(sum((expanded1 - expanded2)^2) / (2 * (nfreq + 1)))
+  sqrt(sum((expanded1 - expanded2)^2))
 }
 
 clust_sd <- function(clust_spec, endpoints_index, collapsed) {
@@ -718,7 +718,7 @@ clust_sd <- function(clust_spec, endpoints_index, collapsed) {
   # expand the collapsed measures to full collapsed spectra
   # and compute the sd of the L2 distance around this object
   expanded <- rep(collapsed, diff(endpoints_index))
-  sqrt(sum((clust_spec - expanded)^2) / (2 * (nfreq + 1) * nrep))
+  sqrt(sum((clust_spec - expanded)^2 / nrep))
 }
 
 clust_similarity <- function(clust_spec1, clust_spec2,
@@ -781,11 +781,11 @@ avg_clust_similarity <- function(spec, labels, endpoints_index, collapsed) {
 #### selection index (no. of bands) ############################################
 unioned_band_sd <- function(union_band_spec, nfreq) {
   union_collapsed <- mean(union_band_spec) # unioned collapsed measure of power
-  sqrt(sum((union_band_spec - union_collapsed)^2) / (2 * (nfreq + 1)))
+  sum((union_band_spec - union_collapsed)^2)
 }
 
 band_sd <- function(band_spec, band_collapsed, nfreq) {
-  sqrt(sum((band_spec - band_collapsed)^2) / (2 * (nfreq + 1)))
+  sum((band_spec - band_collapsed)^2)
 }
 
 band_similarity <- function(band_spec1, band_spec2, collapsed1, collapsed2,
@@ -824,7 +824,7 @@ avg_clust_band_similarity <- function(clust_spec, endpoints_index, collapsed) {
                                   nfreq)
   }
   # compute average similarity over nbands
-  return(sum(sim_vec) / nbands)
+  return(sum(sim_vec) / (nbands - 1))
 }
 
 avg_global_band_similarity <- function(spec, labels, endpoints_index, collapsed) {
