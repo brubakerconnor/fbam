@@ -12,7 +12,7 @@ fbam(
   pmutate = 0.1,
   maxgen = 500,
   maxrun = 100,
-  tol = 0.001,
+  tol = 0.05,
   ntapers = floor(sqrt(nrow(as.matrix(X)))),
   parallel = 1
 )
@@ -35,7 +35,7 @@ Default value is \code{1}.}
 \item{maxrun}{Maxmimum number of generations without improvement (defined below) before the GA is
 terminated. Default value is \code{100}.}
 
-\item{tol}{Tolerance used in determining improvement. See details below. Default value is \code{1e-3}.}
+\item{tol}{Tolerance used in determining improvement. Default value is \code{5e-2} which corresponds to 5\% improvement.}
 
 \item{ntapers}{Number of tapers used in multitaper estimates from \code{X}.
 Default value is \code{floor(sqrt(nrow(as.matrix(X))))}, the floor of the square root
