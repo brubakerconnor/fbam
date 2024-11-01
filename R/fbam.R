@@ -50,15 +50,15 @@
 #' X <- matrix(nrow = 500, ncol = 20)
 #' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
 #' sine_mt(X)
-fbam <- function(X, nbands, nsubpop = 1, popsize = 50, pmutate = 0.1,
-                 maxgen = 500, maxrun = 50, tol = 5e-2,
+fbam <- function(X, nbands, nsubpop = 1, popsize = 50, pmutate = 0.15,
+                 maxgen = 500, maxrun = 50, tol = 1e-2,
                  ntapers = floor(sqrt(nrow(as.matrix(X)))),
                  parallel = 1) {
   param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop)
   all_solutions <- parallel::mclapply(1:nrow(param_grid), function(i) {
     nsubpop <- param_grid$nsubpop[i]
     nbands <- param_grid$nbands[i]
-    ga(X, nsubpop, nbands, popsize, pmutate, maxgen, maxrun, tol, ntapers,
+    ga(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol, ntapers,
        parallel == 1)
   }, mc.cores = parallel)
   validation <- unlist(lapply(all_solutions, function(x) x$validation))

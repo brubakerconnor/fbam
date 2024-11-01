@@ -1,4 +1,4 @@
-ga <- function(X, nsubpop, nbands, popsize, pmutate, maxgen, maxrun, tol,
+ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
                ntapers, verbose) {
 
   # estimate spectra from matrix of time series data X
@@ -124,26 +124,63 @@ ga <- function(X, nsubpop, nbands, popsize, pmutate, maxgen, maxrun, tol,
     rep_summary_mat[labels == j,] <- rep_summary(subpop, endpoints_index[j,])
   }
   validation <- validation_index(spec, labels, endpoints_index, avg_summary_mat)
-  return(list(
-    freq = mtfreq,
-    spec = spec,
-    labels = labels,
-    endpoints = endpoints,
-    avg_summary = avg_summary_mat,
-    rep_summary = rep_summary_mat,
-    objective = 1 / fitvals[which.max(fitvals)],
-    validation = validation,
-    avgfit = avgfit[1:(gen + 1)],
-    maxfit = maxfit[1:(gen + 1)],
+  ga <- list(freq = mtfreq, spec = spec, labels = labels, endpoints = endpoints,
+    avg_summary = avg_summary_mat, rep_summary = rep_summary_mat,
+    objective = 1 / fitvals[which.max(fitvals)], validation = validation,
+    avgfit = avgfit[1:(gen + 1)], maxfit = maxfit[1:(gen + 1)],
     ninfeasible = ninfeasible[1:(gen + 1)],
-    params = list(
-      nsubpop = nsubpop,
-      nbands = nbands,
-      popsize = popsize,
-      pmutate = pmutate,
-      maxgen = maxgen,
-      maxrun = maxrun,
-      tol = tol
-    )
-  ))
+    params = list(nsubpop = nsubpop, nbands = nbands, popsize = popsize,
+                  pmutate = pmutate, maxgen = maxgen, maxrun = maxrun,
+                  tol = tol))
+  class(ga) <- "ga_output"
+  return(ga)
+}
+
+#' @export
+print.ga_output <- function(ga) {
+  cat('Number of replicates provided:', ncol(ga$spec), '\n')
+  cat('nsubpop =', ga$params$nsubpop, ', nbands =', ga$params$nbands)
+  for (j in 1:ga$params$nsubpop) {
+    cat('\n\nSubpopulation j =', j, '\n\tBoundaries:',
+        round(ga$endpoints[j,], 2),
+        '\n\tAverage Summary Measures:', round(ga$avg_summary[j,], 2))
+  }
+}
+
+#' @export
+plot.ga_output <- function(ga, type = 'solution') {
+  nsubpop <- ga$params$nsubpop; nbands <- ga$params$nbands
+  if (ga$params$nsubpop > 1) oldpar <- par(mfrow = c(ceiling(nsubpop / 2), 2))
+
+  if (type == 'solution') {
+    for (j in 1:nsubpop) {
+      subpop_spec <- ga$spec[, ga$labels == j, drop = FALSE]
+      matplot(ga$freq, subpop_spec,
+              type = 'l', lty = 1, lwd = 0.35, col = 'grey80',
+              ylim = c(0, max(ga$spec)),
+              xlab = 'Frequency', ylab = 'Power',
+              main = ifelse(nsubpop > 1, paste0('Subpopulation ', j), 'All Replicates'))
+      abline(v = ga$endpoints[j,], lwd = 1.5, lty = 2)
+      endpoints <- c(0, ga$endpoints[j,], 0.5)
+      for (l in 1:nbands) {
+        band_freq <- ga$freq[ga$freq >= endpoints[l] & ga$freq < endpoints[l + 1]]
+        lines(band_freq, rep(ga$avg_summary[j, l], length(band_freq)),
+              col = 'red', lwd = 1.5)
+      }
+    }
+    if (ga$params$nsubpop > 1) par(oldpar)
+  } else if (type == 'history') {
+    num_gen <- length(ga$avgfit)
+    plot(1:num_gen, 1 / ga$avgfit, type = 'o', col = 'grey50',
+         ylim = c(min(c(1/ga$avgfit, 1/ga$maxfit)), max(c(1/ga$avgfit, 1/ga$maxfit))),
+         xlab = 'Generation Number', ylab = 'Objective Function',
+         main = 'Evolution History')
+    lines(1:num_gen, 1 / ga$maxfit, type = 'o', col = 'red')
+    grid()
+    legend('topright', legend = c('average objective', 'minimum objective'),
+           lty = 1, col = c(1, 2))
+  } else {
+    stop("Unknown plot type. Please specify 'solution' or 'history'.")
+  }
+
 }

@@ -9,10 +9,10 @@ fbam(
   nbands,
   nsubpop = 1,
   popsize = 50,
-  pmutate = 0.1,
+  pmutate = 0.15,
   maxgen = 500,
-  maxrun = 100,
-  tol = 0.05,
+  maxrun = 50,
+  tol = 0.01,
   ntapers = floor(sqrt(nrow(as.matrix(X)))),
   parallel = 1
 )
