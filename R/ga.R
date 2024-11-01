@@ -127,6 +127,7 @@ ga <- function(X, nsubpop, nbands, popsize, pmutate, maxgen, maxrun, tol,
   }
   validation <- validation_index(spec, labels, endpoints_index, avg_summary_mat)
   return(list(
+    freq = mtfreq,
     spec = spec,
     labels = labels,
     endpoints = endpoints,
