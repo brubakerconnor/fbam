@@ -56,29 +56,27 @@ ga <- function(X, nsubpop, nbands, popsize, pmutate, maxgen, maxrun, tol,
   # iterate until convergence
   while (gen < maxgen & run <= maxrun) {
     gen <- gen + 1 # increase generation count
-    pop <- select_parents(pop, 2 * popsize, fitvals)
-
-    # mutation
+    # pop <- select_parents(pop, 2 * popsize, fitvals)
+    new_pop <- matrix(nrow = 4 * popsize, ncol = ncol(pop))
     for (i in 1:nrow(pop)) {
-      # mutate the current member
-      p <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
-      pop[i,] <- mutate(p, pmutate, spec)
-      # cluster the spectra on the basis of this mutated solution
-      # if the mutated solution results in an infeasible solution,
-      # the mutations are discarded and the current solution is left as is
-      # labels_ <- apply(dist_mat(spec, out), 1, which.min)
-      # if (length(unique(mutated_labels)) == nclust) parents[[i]] <- mutated
+      for (r in 1:4) {
+        p <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
+        new_pop[4 * (i - 1) + r,] <- mutate(p, pmutate, spec)
+      }
+      # p1 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
+      # p2 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
+      # new_pop[2 * (i - 1) + 1,] <- mutate(p1, pmutate, spec)
+      # new_pop[2 * (i - 1) + 2,] <- mutate(p2, pmutate, spec)
     }
-
     # evaluation and rank selection of offspring
     # evaluate the children that were created via crossover and/or mutation
     # of the selected parents.
     # children are evaluated and ranked. only the top popsize of them are
     # allowed to survive into the next generation.
     # the previous generation from which parents were selected is discarded.
-    fitvals <- evaluate(pop, spec, nsubpop, nbands)
+    fitvals <- evaluate(new_pop, spec, nsubpop, nbands)
     ranks <- rank(-fitvals, ties.method = "random")
-    pop <- pop[ranks <= popsize,]
+    pop <- new_pop[ranks <= popsize,]
     fitvals <- fitvals[ranks <= popsize]
 
     # elitism
