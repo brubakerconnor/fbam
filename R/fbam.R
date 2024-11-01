@@ -51,7 +51,7 @@
 #' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
 #' sine_mt(X)
 fbam <- function(X, nbands, nsubpop = 1, popsize = 50, pmutate = 0.1,
-                 maxgen = 500, maxrun = 100, tol = 5e-2,
+                 maxgen = 500, maxrun = 50, tol = 5e-2,
                  ntapers = floor(sqrt(nrow(as.matrix(X)))),
                  parallel = 1) {
   param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop)
