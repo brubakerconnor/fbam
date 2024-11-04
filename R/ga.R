@@ -49,19 +49,20 @@ ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
   maxfit[gen + 1] <- max(fitvals)
   ninfeasible[gen + 1] <- sum(fitvals == 1e-50)
   if (verbose) {
-    cat(paste0("START \t\t AVG FIT: ", round(avgfit[gen + 1], 5),
-      "\t\t MAX FIT: ", round(maxfit[gen + 1], 5)), "\n")
+    cat(paste0("START \t\t AVG FIT: ", round(avgfit[gen + 1], 6),
+      "\t\t MAX FIT: ", round(maxfit[gen + 1], 6)), "\n")
   }
 
   # iterate until convergence
   while (gen < maxgen & run <= maxrun) {
     gen <- gen + 1 # increase generation count
     # pop <- select_parents(pop, 2 * popsize, fitvals)
-    new_pop <- matrix(nrow = 4 * popsize, ncol = ncol(pop))
+    R <- 4
+    new_pop <- matrix(nrow = R * popsize, ncol = ncol(pop))
     for (i in 1:nrow(pop)) {
-      for (r in 1:4) {
+      for (r in 1:R) {
         p <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
-        new_pop[4 * (i - 1) + r,] <- mutate(p, pmutate, spec)
+        new_pop[R * (i - 1) + r,] <- mutate(p, pmutate, spec)
       }
       # p1 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
       # p2 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
@@ -102,8 +103,8 @@ ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
       run <- 0
     }
     if (verbose & gen %% 25 == 0) {
-      cat(paste0("GEN ", gen, "\t\t AVG FIT: ", round(avgfit[gen + 1], 5),
-        "\t\t MAX FIT: ", round(maxfit[gen + 1], 5)), "\n")
+      cat(paste0("GEN ", gen, "\t\t AVG FIT: ", round(avgfit[gen + 1], 6),
+        "\t\t MAX FIT: ", round(maxfit[gen + 1], 6)), "\n")
     }
   }
   solution <- matrix(pop[which.max(fitvals),], nrow = nsubpop, byrow = T)
@@ -149,10 +150,9 @@ print.ga_output <- function(ga) {
 
 #' @export
 plot.ga_output <- function(ga, type = 'solution') {
-  nsubpop <- ga$params$nsubpop; nbands <- ga$params$nbands
-  if (ga$params$nsubpop > 1) oldpar <- par(mfrow = c(ceiling(nsubpop / 2), 2))
-
   if (type == 'solution') {
+    nsubpop <- ga$params$nsubpop; nbands <- ga$params$nbands
+    if (ga$params$nsubpop > 1) oldpar <- par(mfrow = c(ceiling(nsubpop / 2), 2))
     for (j in 1:nsubpop) {
       subpop_spec <- ga$spec[, ga$labels == j, drop = FALSE]
       matplot(ga$freq, subpop_spec,
