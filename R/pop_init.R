@@ -17,8 +17,8 @@ pop_init <- function(popsize, nsubpop, nbands, spec) {
 
   # equally spaced grid for the initial boundaries
   # should be unique as long as nbands < nfreq (checked above)
-  eqspaced <- floor(seq(1, nfreq + 1, length = nbands + 1))
-  eqspaced <- eqspaced[-c(1, length(eqspaced))] # keep only interior boundaries
+  # eqspaced <- floor(seq(1, nfreq + 1, length = nbands + 1))
+  # eqspaced <- eqspaced[-c(1, length(eqspaced))] # keep only interior boundaries
 
   # initialize each member of the population
   pop <- matrix(nrow = popsize, ncol = nsubpop * (2 * nbands - 1))
@@ -30,8 +30,8 @@ pop_init <- function(popsize, nsubpop, nbands, spec) {
     collapsed <- matrix(nrow = nsubpop, ncol = nbands)
     for (j in seq_len(nsubpop)) {
       rand_spec <- spec[, sample(nrep, 1), drop = FALSE]
-      p[j, 1:nendpoints] <- eqspaced
-      p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, eqspaced)
+      p[j, 1:nendpoints] <- sort(sample(2:nfreq, size = nbands - 1))
+      p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, p[j, 1:nendpoints])
     }
     pop[i,] <- as.vector(t(p)) # add to population
   }
