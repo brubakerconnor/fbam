@@ -16,7 +16,7 @@ mutate <- function(p, pmutate, spec) {
         # update widths since the endpoints may have changed in last iteration
         widths <- diff(new_endpoints) - 1
         s <- truncnorm::rtruncnorm(1, a = -widths[l - 1], b = widths[l],
-                                   mean = 0, sd = max(widths[(l - 1):l]) / 3)
+                                   mean = 0, sd = max(widths[(l - 1):l]))
         new_endpoints[l] <- new_endpoints[l] + round(s)
       }
     }
@@ -29,7 +29,7 @@ mutate <- function(p, pmutate, spec) {
     collapsed[lottery] <- truncnorm::rtruncnorm(sum(lottery),
                                                 a = 0, b = max(spec),
                                                 mean = collapsed[lottery],
-                                                sd = max(spec) / 8)
+                                                sd = sqrt(max(spec) / 8))
   }
 
   # return modified individual
