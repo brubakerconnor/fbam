@@ -1,5 +1,9 @@
-ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
+ga <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
                ntapers, verbose) {
+
+  n_islands <- 5
+  n_migrants <- floor(0.1 * popsize)
+  epoch <- 50 # migration frequency
 
   # estimate spectra from matrix of time series data X
   if (is.vector(X)) X <- as.matrix(X) # treat vector as one replicate
@@ -30,73 +34,93 @@ ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
             lead to longer convergence times.")
   }
 
-  # step 1: population initialization
+  # step 1: population initialization for each of the islands
+  # initialize fitness values and elites
   if (popsize < 1) {
     stop("popsize must be at least 1. Using recommended setting of 50.")
     popsize <- 50
   }
-  pop <- pop_init(popsize, nsubpop, nbands, spec)
+  pops <- lapply(1:n_islands, function(x) {
+    pop <- pop_init(popsize, nsubpop, nbands, spec)
+    fitvals <- evaluate(pop, spec, nsubpop, nbands)
+    elite <- pop[which.max(fitvals), ]
+    elite_fitval <- fitvals[which.max(fitvals)]
+    return(list(pop = pop, fitvals = fitvals,
+                elite = elite, elite_fitval = elite_fitval))
+  })
 
-  # step 2: initial evaluation of population and initialization of elite
-  fitvals <- evaluate(pop, spec, nsubpop, nbands)
-  elite <- pop[which.max(fitvals), ]
-  elite_fitval <- fitvals[which.max(fitvals)]
-
-  # initialize monitoring
+  # initialize monitoring (aggregated across islands)
   gen <- run <- 0
   avgfit <- maxfit <- ninfeasible <- rep(0, maxgen + 1)
-  avgfit[gen + 1] <- mean(fitvals)
-  maxfit[gen + 1] <- max(fitvals)
-  ninfeasible[gen + 1] <- sum(fitvals == 1e-50)
+  avgfit[gen + 1] <- mean(unlist(lapply(pops, function(x) mean(x$fitvals))))
+  maxfit[gen + 1] <- max(unlist(lapply(pops, function(x) max(x$fitvals))))
+  ninfeasible[gen + 1] <- sum(unlist(lapply(pops, function(x) sum(x$fitvals == 1e-50))))
   if (verbose) {
-    cat(paste0("START \t\t AVG FIT: ", round(avgfit[gen + 1], 6),
-      "\t\t MAX FIT: ", round(maxfit[gen + 1], 6)), "\n")
+    cat(paste0("GEN ", gen, "\t\t AVG FIT: ", round(avgfit[gen + 1], 6),
+               "\t\t MAX FIT: ", round(maxfit[gen + 1], 6)), "\n")
   }
+
+  # adaptive mutation rate
+  pmutate_init <- pmutate <- 0.5
+  alpha <- log(2) / 50  # halve mutation rate every 50 generations
 
   # iterate until convergence
   while (gen < maxgen & run <= maxrun) {
     gen <- gen + 1 # increase generation count
-    # pop <- select_parents(pop, 2 * popsize, fitvals)
-    R <- 4
-    new_pop <- matrix(nrow = R * popsize, ncol = ncol(pop))
-    for (i in 1:nrow(pop)) {
-      for (r in 1:R) {
-        p <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
-        new_pop[R * (i - 1) + r,] <- mutate(p, pmutate, spec)
-      }
-      # p1 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
-      # p2 <- matrix(pop[i,], nrow = nsubpop, byrow = TRUE)
-      # new_pop[2 * (i - 1) + 1,] <- mutate(p1, pmutate, spec)
-      # new_pop[2 * (i - 1) + 2,] <- mutate(p2, pmutate, spec)
-    }
-    # evaluation and rank selection of offspring
-    # evaluate the children that were created via crossover and/or mutation
-    # of the selected parents.
-    # children are evaluated and ranked. only the top popsize of them are
-    # allowed to survive into the next generation.
-    # the previous generation from which parents were selected is discarded.
-    fitvals <- evaluate(new_pop, spec, nsubpop, nbands)
-    ranks <- rank(-fitvals, ties.method = "random")
-    pop <- new_pop[ranks <= popsize,]
-    fitvals <- fitvals[ranks <= popsize]
 
-    # elitism
-    if (elite_fitval > max(fitvals)) {
-      # the previous elite is better than the current elite
-      # replace current least fit member by the previous elite
-      pop[which.min(fitvals), ] <- elite
-      fitvals[which.min(fitvals)] <- elite_fitval
-    } else {
-      # the current elite is better than the previous elite
-      # replace previous elite with current elite
-      elite <- pop[which.max(fitvals),]
-      elite_fitval <- fitvals[which.max(fitvals)]
+    pops <- lapply(pops, function(x) {
+      R <- 2 # popsize
+      new_pop <- matrix(nrow = R * popsize, ncol = ncol(x$pop))
+      for (i in 1:nrow(x$pop)) {
+        for (r in 1:R) {
+          p <- matrix(x$pop[i,], nrow = nsubpop, byrow = TRUE)
+          tmp <- mutate(p, pmutate, spec)
+          tmp_labels <- l2_assign(spec, matrix(tmp, nrow = nsubpop, byrow = TRUE))
+          if (length(unique(tmp_labels)) != nsubpop) {
+            new_pop[R * (i - 1) + r,] <- x$pop[i,]
+          } else {
+            new_pop[R * (i - 1) + r,] <- tmp
+          }
+        }
+      }
+      fitvals <- evaluate(new_pop, spec, nsubpop, nbands)
+      ranks <- rank(-fitvals, ties.method = "random")
+      pop <- new_pop[ranks <= popsize,]
+      fitvals <- fitvals[ranks <= popsize]
+
+      # elitism
+      if (x$elite_fitval > max(fitvals)) {
+        # the previous elite is better than the current elite
+        # replace current least fit member by the previous elite
+        pop[which.min(fitvals), ] <- x$elite
+        fitvals[which.min(fitvals)] <- x$elite_fitval
+      } else {
+        # the current elite is better than the previous elite
+        # replace previous elite with current elite
+        x$elite <- pop[which.max(fitvals),]
+        x$elite_fitval <- fitvals[which.max(fitvals)]
+      }
+      return(list(pop = pop, fitvals = fitvals,
+                  elite = x$elite, elite_fitval = x$elite_fitval))
+    })
+
+    if (gen %% epoch == 0) {
+      # perform migration
+      ind <- sample(1:popsize, size = n_migrants, replace = F)
+      samp_prev <- pops[[1]]$pop[ind,]
+      for (i in 2:n_islands) {
+        samp <- pops[[i]]$pop[ind,] <- samp_prev
+        samp_prev <- samp
+      }
+      pops[[1]]$pop[ind,] <- samp_prev
     }
+
+    pmutate <- pmutate_init * exp(-alpha * gen)
 
     # monitoring
-    avgfit[gen + 1] <- mean(fitvals)
-    maxfit[gen + 1] <- max(fitvals)
-    ninfeasible[gen + 1] <- sum(fitvals == 1e-50)
+    avgfit[gen + 1] <- mean(unlist(lapply(pops, function(x) mean(x$fitvals))))
+    maxfit[gen + 1] <- max(unlist(lapply(pops, function(x) max(x$fitvals))))
+    ninfeasible[gen + 1] <- sum(unlist(lapply(pops, function(x) sum(x$fitvals == 1e-50))))
     if ((maxfit[gen + 1] - maxfit[gen]) / maxfit[gen] < tol) {
       run <- run + 1
     } else {
@@ -107,6 +131,8 @@ ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
         "\t\t MAX FIT: ", round(maxfit[gen + 1], 6)), "\n")
     }
   }
+  pop <- do.call(rbind, lapply(pops, function(x) x$pop))
+  fitvals <- unlist(lapply(pops, function(x) x$fitvals))
   solution <- matrix(pop[which.max(fitvals),], nrow = nsubpop, byrow = T)
   solution_fitness <- fitvals[which.max(fitvals)]
   if (nsubpop > 1) {

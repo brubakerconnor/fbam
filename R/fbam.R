@@ -11,7 +11,6 @@
 #' If more than one value is supplied, they all must be greater than or equal to 2.
 #' Default value is \code{1}.
 #' @param popsize Population size. Default is \code{50}.
-#' @param pmutate Probability of mutation. Default value is \code{0.1}.
 #' @param maxgen Maximum number of generations to run GA. Default value is \code{500}.
 #' @param maxrun Maxmimum number of generations without improvement (defined below) before the GA is
 #' terminated. Default value is \code{100}.
@@ -50,8 +49,8 @@
 #' X <- matrix(nrow = 500, ncol = 20)
 #' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
 #' sine_mt(X)
-fbam <- function(X, nbands, nsubpop = 1, popsize = 50, pmutate = 0.1,
-                 maxgen = 500, maxrun = 100, tol = 1e-2,
+fbam <- function(X, nbands, nsubpop = 1, popsize = 50,
+                 maxgen = 500, maxrun = 150, tol = 1e-2,
                  ntapers = floor(sqrt(nrow(as.matrix(X)))),
                  parallel = 1) {
   param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop)

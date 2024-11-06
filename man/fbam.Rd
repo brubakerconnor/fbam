@@ -9,9 +9,8 @@ fbam(
   nbands,
   nsubpop = 1,
   popsize = 50,
-  pmutate = 0.1,
   maxgen = 500,
-  maxrun = 100,
+  maxrun = 150,
   tol = 0.01,
   ntapers = floor(sqrt(nrow(as.matrix(X)))),
   parallel = 1
@@ -27,8 +26,6 @@ If more than one value is supplied, they all must be greater than or equal to 2.
 Default value is \code{1}.}
 
 \item{popsize}{Population size. Default is \code{50}.}
-
-\item{pmutate}{Probability of mutation. Default value is \code{0.1}.}
 
 \item{maxgen}{Maximum number of generations to run GA. Default value is \code{500}.}
 
