@@ -28,12 +28,13 @@ pop_init <- function(popsize, nsubpop, nbands, spec) {
     # initialize collapsed measures of power by randomly selecting a
     # replicate spectrum and collapsing it using the endpoints set above
     collapsed <- matrix(nrow = nsubpop, ncol = nbands)
+    endpoints <- sort(sample(2:nfreq, size = nbands - 1, replace = F))
     for (j in seq_len(nsubpop)) {
       rand_spec <- spec[, sample(nrep, 1), drop = FALSE]
-      # p[j, 1:nendpoints] <- sort(sample(2:nfreq, size = nbands - 1))
-      # p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, p[j, 1:nendpoints])
-      p[j, 1:nendpoints] <- eqspaced
-      p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, eqspaced)
+      p[j, 1:nendpoints] <- endpoints
+      p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, endpoints)
+      # p[j, 1:nendpoints] <- eqspaced
+      # p[j, (nendpoints + 1):ncol(p)] <- avg_summary(rand_spec, eqspaced)
     }
     pop[i,] <- as.vector(t(p)) # add to population
   }
