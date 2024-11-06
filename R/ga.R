@@ -110,7 +110,7 @@ ga <- function(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol,
   solution <- matrix(pop[which.max(fitvals),], nrow = nsubpop, byrow = T)
   solution_fitness <- fitvals[which.max(fitvals)]
   if (nsubpop > 1) {
-    labels <- l2_assign(spec, solution)
+    labels <- l2assign(spec, solution)
   } else {
     labels <- rep(1, nrep)
   }
