@@ -27,7 +27,7 @@ IntegerVector l2assign(NumericMatrix spec, NumericMatrix p) {
     std::vector<int> widths(nbands);
     for (int i = 0; i < nbands; i++) {
       if (i == 0) {
-        widths[i] = endpoints[i];
+        widths[i] = endpoints[i] - 1;
       } else if (i == nbands - 1) {
         widths[i] = (nfreq + 1) - endpoints[i - 1];
       } else {
@@ -37,9 +37,11 @@ IntegerVector l2assign(NumericMatrix spec, NumericMatrix p) {
 
     // Create center vector by repeating collapsed values according to band widths
     std::vector<double> center_vec(nfreq);
+    int idx = 0;
     for (int i = 0; i < nbands; i++) {
       for (int w = 0; w < widths[i]; w++) {
-        center_vec[w] = collapsed[i];
+        center_vec[idx] = collapsed[i];
+        idx++;
       }
     }
 
