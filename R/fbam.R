@@ -57,7 +57,7 @@ fbam <- function(X, nbands, nsubpop = 1, popsize = 50,
   all_solutions <- parallel::mclapply(1:nrow(param_grid), function(i) {
     nsubpop <- param_grid$nsubpop[i]
     nbands <- param_grid$nbands[i]
-    ga(X, nbands, nsubpop, popsize, pmutate, maxgen, maxrun, tol, ntapers,
+    ga(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers,
        parallel == 1)
   }, mc.cores = parallel)
   validation <- unlist(lapply(all_solutions, function(x) x$validation))
