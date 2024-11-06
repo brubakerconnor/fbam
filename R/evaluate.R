@@ -24,11 +24,10 @@ evaluate <- function(pop, spec, nsubpop, nbands) {
     for (j in 1:nsubpop) {
       clust_spec <- spec[, labels == j, drop = FALSE]
       # get collapsed measures and widths in each band
-      # collapsed <- avg_summary(clust_spec, endpoints[j,])
+      collapsed <- avg_summary(clust_spec, endpoints[j,])
       widths <- diff(c(1, endpoints[j,], nfreq + 1))
       # expand the collapsed measures and compute L2 distance
-      # center <- rep(collapsed, widths)
-      center <- rep(collapsed[j,], widths)
+      center <- rep(collapsed, widths)
       wcss[j] <- sum((clust_spec - center)^2) / (2 * (nfreq + 1))
     }
     return(1 / sum(wcss))
