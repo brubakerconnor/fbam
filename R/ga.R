@@ -1,8 +1,8 @@
 ga <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
                ntapers, verbose) {
 
-  n_islands <- 5
-  n_migrants <- floor(0.1 * popsize)
+  n_islands <- 6
+  n_migrants <- 5
   epoch <- 50 # migration frequency
 
   # estimate spectra from matrix of time series data X
@@ -75,7 +75,7 @@ ga <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
         for (r in 1:R) {
           p <- matrix(x$pop[i,], nrow = nsubpop, byrow = TRUE)
           tmp <- mutate(p, pmutate, spec)
-          tmp_labels <- l2_assign(spec, matrix(tmp, nrow = nsubpop, byrow = TRUE))
+          tmp_labels <- l2assign(spec, matrix(tmp, nrow = nsubpop, byrow = TRUE))
           if (length(unique(tmp_labels)) != nsubpop) {
             new_pop[R * (i - 1) + r,] <- x$pop[i,]
           } else {
