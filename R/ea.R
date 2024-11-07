@@ -1,4 +1,4 @@
-ga <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
+ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
                ntapers, verbose) {
 
   n_islands <- 6

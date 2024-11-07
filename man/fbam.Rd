@@ -27,9 +27,9 @@ Default value is \code{1}.}
 
 \item{popsize}{Population size. Default is \code{50}.}
 
-\item{maxgen}{Maximum number of generations to run GA. Default value is \code{500}.}
+\item{maxgen}{Maximum number of generations to run EA. Default value is \code{500}.}
 
-\item{maxrun}{Maxmimum number of generations without improvement (defined below) before the GA is
+\item{maxrun}{Maxmimum number of generations without improvement (defined below) before the EA is
 terminated. Default value is \code{100}.}
 
 \item{tol}{Tolerance used in determining improvement. Default value is \code{1e-2} which corresponds to 5\% improvement.}
@@ -56,8 +56,8 @@ the columns of \code{X}.
 \item \code{validation}: The value of the validation criteria.
 \item \code{avgfit}, \code{maxfit}, \code{ninfeasible}: The average fitness value, maximum fitness value, and
 number of infeasible solutions at the end of each generation. Vectors of length equal to the number of generations
-completed before termination of the GA.
-\item \code{params}: List of parameters sent to the GA.
+completed before termination of the EA.
+\item \code{params}: List of parameters sent to the EA.
 }
 \item \code{all_solutions}: A list of solutions of the same list structure as \code{selected_solution.}
 }
@@ -66,9 +66,9 @@ and \code{all_solutions} are the same object. This is done intentionally for con
 }
 \description{
 Simultaneous segmentation and frequency band estimation for a collection of
-independent time series realizations. When either or both of the number of
-frequency bands or subpopulations is unknown, the final solution is chosen
-by minimization of validation criteria.
+independent time series realizations via evolutionary algorithm (EA).
+When either or both of the number of frequency bands or subpopulations is
+unknown, the final solution is chosen by minimization of validation criteria.
 }
 \examples{
 X <- matrix(nrow = 500, ncol = 20)

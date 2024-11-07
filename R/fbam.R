@@ -1,9 +1,9 @@
 #' Frequency band analysis for multiple stationary time series
 #'
 #' Simultaneous segmentation and frequency band estimation for a collection of
-#' independent time series realizations. When either or both of the number of
-#' frequency bands or subpopulations is unknown, the final solution is chosen
-#' by minimization of validation criteria.
+#' independent time series realizations via evolutionary algorithm (EA).
+#' When either or both of the number of frequency bands or subpopulations is
+#' unknown, the final solution is chosen by minimization of validation criteria.
 #'
 #' @param X Column-wise matrix of replicate time series. A vector is treated as a single replicate.
 #' @param nbands Possible values for the number of frequencies bands. Must all be greater than or equal to 2.
@@ -11,8 +11,8 @@
 #' If more than one value is supplied, they all must be greater than or equal to 2.
 #' Default value is \code{1}.
 #' @param popsize Population size. Default is \code{50}.
-#' @param maxgen Maximum number of generations to run GA. Default value is \code{500}.
-#' @param maxrun Maxmimum number of generations without improvement (defined below) before the GA is
+#' @param maxgen Maximum number of generations to run EA. Default value is \code{500}.
+#' @param maxrun Maxmimum number of generations without improvement (defined below) before the EA is
 #' terminated. Default value is \code{100}.
 #' @param tol Tolerance used in determining improvement. Default value is \code{1e-2} which corresponds to 5% improvement.
 #' @param ntapers Number of tapers used in multitaper estimates from \code{X}.
@@ -36,8 +36,8 @@
 #'    \item \code{validation}: The value of the validation criteria.
 #'    \item \code{avgfit}, \code{maxfit}, \code{ninfeasible}: The average fitness value, maximum fitness value, and
 #'    number of infeasible solutions at the end of each generation. Vectors of length equal to the number of generations
-#'    completed before termination of the GA.
-#'    \item \code{params}: List of parameters sent to the GA.
+#'    completed before termination of the EA.
+#'    \item \code{params}: List of parameters sent to the EA.
 #'  }
 #'  \item \code{all_solutions}: A list of solutions of the same list structure as \code{selected_solution.}
 #' }
@@ -57,7 +57,7 @@ fbam <- function(X, nbands, nsubpop = 1, popsize = 50,
   all_solutions <- parallel::mclapply(1:nrow(param_grid), function(i) {
     nsubpop <- param_grid$nsubpop[i]
     nbands <- param_grid$nbands[i]
-    ga(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers,
+    ea(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers,
        parallel == 1)
   }, mc.cores = parallel)
   validation <- unlist(lapply(all_solutions, function(x) x$validation))
