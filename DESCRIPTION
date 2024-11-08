@@ -16,9 +16,13 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
+    dplyr,
+    ggplot2,
+    gsignal,
     imputeTS,
     knitr,
-    rmarkdown
+    rmarkdown,
+    tidyr
 VignetteBuilder: knitr
 Depends: 
     truncnorm
