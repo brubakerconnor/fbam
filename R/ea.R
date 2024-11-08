@@ -151,7 +151,7 @@ ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
     rep_summary_mat[labels == j,] <- rep_summary(subpop, endpoints_index[j,])
   }
   validation <- validation_index(spec, labels, endpoints_index, avg_summary_mat)
-  ga <- list(freq = mtfreq, spec = spec, labels = labels, endpoints = endpoints,
+  ea_output <- list(freq = mtfreq, spec = spec, labels = labels, endpoints = endpoints,
     avg_summary = avg_summary_mat, rep_summary = rep_summary_mat,
     objective = 1 / fitvals[which.max(fitvals)], validation = validation,
     avgfit = avgfit[1:(gen + 1)], maxfit = maxfit[1:(gen + 1)],
@@ -159,8 +159,8 @@ ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
     params = list(nsubpop = nsubpop, nbands = nbands, popsize = popsize,
                   pmutate = pmutate, maxgen = maxgen, maxrun = maxrun,
                   tol = tol, sample_rate = sample_rate))
-  class(ga) <- "ea_output"
-  return(ga)
+  class(ea_output) <- "ea_output"
+  return(ea_output)
 }
 
 #' @export
@@ -177,19 +177,19 @@ print.ea_output <- function(ea) {
 }
 
 #' @export
-plot.ea_output <- function(ea, type = 'solution') {
+plot.ea_output <- function(ea_output, type = 'solution') {
   if (type == 'solution') {
     `%>%` <- dplyr::`%>%`
-    nrep <- length(ea$labels)
-    nsubpop <- ea$params$nsubpop; nbands <- ea$params$nbands
+    nrep <- length(ea_output$labels)
+    nsubpop <- ea_output$params$nsubpop; nbands <- ea_output$params$nbands
     # data frame for multitaper spectral estimates
-    mt <- cbind(as.data.frame(t(ea$spec)), ifelse(
+    mt <- cbind(as.data.frame(t(ea_output$spec)), ifelse(
       rep(nsubpop > 1, nrep),
-      paste0("Subpopulation ", ea$labels),
-      rep("All Replicates", length(ea$labels))
+      paste0("Subpopulation ", ea_output$labels),
+      rep("All Replicates", length(ea_output$labels))
     ))
     mt <- mt %>% dplyr::mutate(row_id = dplyr::row_number())
-    names(mt)[1:(ncol(mt) - 2)] <- ea$freq
+    names(mt)[1:(ncol(mt) - 2)] <- ea_output$freq
     names(mt)[ncol(mt) - 1] <- "label"
     mt_long <- mt %>%
       tidyr::pivot_longer(cols = -c(label, row_id),
@@ -202,13 +202,13 @@ plot.ea_output <- function(ea, type = 'solution') {
         rep(nsubpop > 1, nsubpop * (nbands - 1)),
         paste0("Subpopulation ", rep(1:nsubpop, each = nbands - 1)),
         rep("All Replicates", nsubpop * (nbands - 1))),
-      boundary = as.vector(t(ea$endpoints))
+      boundary = as.vector(t(ea_output$endpoints))
     )
 
     # data frame for collapsed measures with start and end points
-    endpoints <- matrix(min(ea$freq), nrow = nsubpop, ncol = nbands + 1)
-    endpoints[1:nsubpop, 2:nbands] <- ea$endpoints
-    endpoints[1:nsubpop, nbands + 1] <- max(ea$freq)
+    endpoints <- matrix(min(ea_output$freq), nrow = nsubpop, ncol = nbands + 1)
+    endpoints[1:nsubpop, 2:nbands] <- ea_output$endpoints
+    endpoints[1:nsubpop, nbands + 1] <- max(ea_output$freq)
     collapsed <- data.frame(
       label = ifelse(
         rep(nsubpop > 1, nsubpop * nbands),
@@ -217,14 +217,14 @@ plot.ea_output <- function(ea, type = 'solution') {
       ),
       xstart = as.vector(t(endpoints[, 1:nbands])),
       xend = as.vector(t(endpoints[, 2:(nbands + 1)])),
-      yvalue = as.vector(t(ea$avg_summary))
+      yvalue = as.vector(t(ea_output$avg_summary))
     )
 
     p <- ggplot2::ggplot() +
       ggplot2::geom_line(ggplot2::aes(x = freq, y = spec, group = row_id), mt_long,
                 linewidth = 0.25) +
       ggplot2::scale_x_continuous(
-        breaks = seq(from = 0, to = 0.5 * ea$params$sample_rate, by = 0.25)
+        breaks = seq(from = 0, to = 0.5 * ea_output$params$sample_rate, by = 0.25)
       ) +
       ggplot2::facet_wrap(~label) +
       ggplot2::geom_segment(ggplot2::aes(x = xstart, xend = xend, y = yvalue, yend = yvalue),
@@ -238,12 +238,12 @@ plot.ea_output <- function(ea, type = 'solution') {
 
 
   } else if (type == 'history') {
-    num_gen <- length(ea$avgfit)
-    plot(1:num_gen, 1 / ea$avgfit, type = 'o', col = 'grey50',
-         ylim = c(min(c(1/ea$avgfit, 1/ea$maxfit)), max(c(1/ea$avgfit, 1/ea$maxfit))),
+    num_gen <- length(ea_output$avgfit)
+    plot(1:num_gen, 1 / ea_output$avgfit, type = 'o', col = 'grey50',
+         ylim = c(min(c(1/ea_output$avgfit, 1/ea_output$maxfit)), max(c(1/ea_output$avgfit, 1/ea_output$maxfit))),
          xlab = 'Generation Number', ylab = 'Objective Function',
          main = 'Evolution History')
-    lines(1:num_gen, 1 / ea$maxfit, type = 'o', col = 'red')
+    lines(1:num_gen, 1 / ea_output$maxfit, type = 'o', col = 'red')
     grid()
     legend('topright', legend = c('average objective', 'minimum objective'),
            lty = 1, col = c(1, 2))
