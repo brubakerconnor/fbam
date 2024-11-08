@@ -13,6 +13,7 @@ fbam(
   maxrun = 150,
   tol = 0.01,
   ntapers = floor(sqrt(nrow(as.matrix(X)))),
+  sample_rate = 1,
   parallel = 1
 )
 }
@@ -37,6 +38,8 @@ terminated. Default value is \code{100}.}
 \item{ntapers}{Number of tapers used in multitaper estimates from \code{X}.
 Default value is \code{floor(sqrt(nrow(as.matrix(X))))}, the floor of the square root
 of the length of the time series.}
+
+\item{sample_rate}{The number of samples per unit time. Default value is \code{1}.}
 
 \item{parallel}{Number of cores to use in parallelization. Default value is \code{1} (no parallelization).}
 }

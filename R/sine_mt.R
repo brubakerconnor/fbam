@@ -7,14 +7,15 @@
 #' @param X Column-wise matrix of replicate time series. A vector is treated as a single replicate.
 #' @param ntapers Number of tapers to use in constructing the multitaper estimator. Default value is
 #' the floor of the square root of the length of the time series (number of rows in \code{X}).
+#' @param sample_rate The number of samples per unit time. Default value is \code{1}.
 #'
 #' @return A list with the following components:
 #' \itemize{
-#'  \item \code{mtfreq}: Vector of frequencies
+#'  \item \code{mtfreq}: Vector of Fourier frequencies
 #'  \item \code{mtspec}: Column-wise matrix of spectral estimates in correspondence to the rows of \code{X}.
 #' }
 #' @details
-#' The zero and one-half frequencies are not included in the output estimates.
+#' The zero frequency and Nyquist frequency (folding frequency) are not included in the resulting estimates.
 #' The choice of \code{ntapers = floor(sqrt(nrow(X)))} ensures consistency of the resulting estimator.
 #'
 #' @references
@@ -36,14 +37,15 @@
 #' X <- matrix(nrow = 500, ncol = 20)
 #' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
 #' sine_mt(X)
-sine_mt <- function(X, ntapers = floor(sqrt(dim(as.matrix(X))[1]))) {
+sine_mt <- function(X, ntapers = floor(sqrt(dim(as.matrix(X))[1])),
+                    sample_rate = 1) {
   if (!is.matrix(X)) X <- as.matrix(X) # vector treated as single replicate
   len <- dim(X)[1]
   if (len < dim(X)[2]) {
     warning("Wide matrix was provided. Ensure that the matrix is formatted such
             that columns (rather than rows) correspond to replicates.")
   }
-  mtfreq <- seq(from = 1 / len, by = 1 / len, length = floor(len / 2) - 1)
+  mtfreq <- (sample_rate / len) * 1:(floor(len / 2) - 1)
   mtspec <- apply(X, 2, function(x) {
     m <- floor(len / 2) - 1 # number of frequencies excluding 0 and len / 2
     sine_tapers <- outer(seq_len(ntapers), seq_len(len), function(x, y) {

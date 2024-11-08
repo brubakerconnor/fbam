@@ -1,5 +1,5 @@
 ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
-               ntapers, verbose) {
+               ntapers, sample_rate, verbose) {
 
   n_islands <- 6
   n_migrants <- 5
@@ -7,7 +7,7 @@ ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
 
   # estimate spectra from matrix of time series data X
   if (is.vector(X)) X <- as.matrix(X) # treat vector as one replicate
-  mtout <- sine_mt(X, ntapers)
+  mtout <- sine_mt(X, ntapers, sample_rate)
   mtfreq <- mtout$mtfreq; spec <- mtout$mtspec
   nfreq <- length(mtfreq); nrep <- dim(spec)[2]
 
@@ -158,7 +158,7 @@ ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
     ninfeasible = ninfeasible[1:(gen + 1)],
     params = list(nsubpop = nsubpop, nbands = nbands, popsize = popsize,
                   pmutate = pmutate, maxgen = maxgen, maxrun = maxrun,
-                  tol = tol))
+                  tol = tol, sample_rate = sample_rate))
   class(ga) <- "ga_output"
   return(ga)
 }
@@ -166,10 +166,12 @@ ea <- function(X, nbands, nsubpop, popsize, maxgen, maxrun, tol,
 #' @export
 print.ga_output <- function(ga) {
   cat('Number of replicates provided:', ncol(ga$spec), '\n')
-  cat('nsubpop =', ga$params$nsubpop, ', nbands =', ga$params$nbands)
+  cat('nsubpop = ', ga$params$nsubpop, ', nbands = ', ga$params$nbands, sep = "")
   for (j in 1:ga$params$nsubpop) {
-    cat('\n\nSubpopulation j =', j, '\n\tBoundaries:',
-        round(ga$endpoints[j,], 2),
+    nrep_subpop <- ncol(ga$spec[, ga$labels == j, drop = FALSE])
+    cat('\n\nSubpopulation j =', j, '\nNumber of replicates:', nrep_subpop,
+        '\n\tBoundaries:',
+        paste0(round(ga$endpoints[j,], 4), ' Hz'),
         '\n\tAverage Summary Measures:', round(ga$avg_summary[j,], 2))
   }
 }
@@ -184,10 +186,10 @@ plot.ga_output <- function(ga, type = 'solution') {
       matplot(ga$freq, subpop_spec,
               type = 'l', lty = 1, lwd = 0.35, col = 'grey80',
               ylim = c(0, max(ga$spec)),
-              xlab = 'Frequency', ylab = 'Power',
+              xlab = 'Hz', ylab = 'Power',
               main = ifelse(nsubpop > 1, paste0('Subpopulation ', j), 'All Replicates'))
       abline(v = ga$endpoints[j,], lwd = 1.5, lty = 2)
-      endpoints <- c(0, ga$endpoints[j,], 0.5)
+      endpoints <- c(0, ga$endpoints[j,], 0.5 * ga$params$sample_rate)
       for (l in 1:nbands) {
         band_freq <- ga$freq[ga$freq >= endpoints[l] & ga$freq < endpoints[l + 1]]
         lines(band_freq, rep(ga$avg_summary[j, l], length(band_freq)),

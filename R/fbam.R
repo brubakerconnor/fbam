@@ -18,6 +18,7 @@
 #' @param ntapers Number of tapers used in multitaper estimates from \code{X}.
 #' Default value is \code{floor(sqrt(nrow(as.matrix(X))))}, the floor of the square root
 #' of the length of the time series.
+#' @param sample_rate The number of samples per unit time. Default value is \code{1}.
 #' @param parallel Number of cores to use in parallelization. Default value is \code{1} (no parallelization).
 #'
 #'
@@ -52,12 +53,12 @@
 fbam <- function(X, nbands, nsubpop = 1, popsize = 50,
                  maxgen = 500, maxrun = 150, tol = 1e-2,
                  ntapers = floor(sqrt(nrow(as.matrix(X)))),
-                 parallel = 1) {
+                 sample_rate = 1, parallel = 1) {
   param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop)
   all_solutions <- parallel::mclapply(1:nrow(param_grid), function(i) {
     nsubpop <- param_grid$nsubpop[i]
     nbands <- param_grid$nbands[i]
-    ea(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers,
+    ea(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers, sample_rate,
        parallel == 1)
   }, mc.cores = parallel)
   validation <- unlist(lapply(all_solutions, function(x) x$validation))
