@@ -21,6 +21,7 @@ Suggests:
     gsignal,
     imputeTS,
     knitr,
+    parallel,
     rmarkdown,
     tidyr
 VignetteBuilder: knitr
