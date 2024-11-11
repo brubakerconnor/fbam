@@ -21,7 +21,7 @@ subpop_dist <- function(endpoints_index1, endpoints_index2, avg_summary1, avg_su
 }
 
 subpop_sd <- function(subpop_spec, endpoints_index, avg_summary) {
-  nfreq <- dim(subpop_spec)[1]; nrep <- dim(subpop_spec)[2]
+  nrep <- dim(subpop_spec)[2]
   endpoints_index <- sort(endpoints_index)
   expanded <- rep(avg_summary, diff(endpoints_index))
   sqrt(sum((subpop_spec - expanded)^2 / nrep))
@@ -39,7 +39,7 @@ avg_subpop_sim <- function(spec, labels, endpoints_index, avg_summary) {
   # allows for the possibility of empty subpopulations
   ulabels <- unique(labels)
   n_nonempty_subpop <- length(ulabels)
-  nsubpop <- dim(endpoints_index)[1]; nfreq <- dim(spec)[1]
+  nfreq <- dim(spec)[1]; nsubpop <- dim(endpoints_index)[1]
 
   # compute the similarity between each pair of subpopulations
   # the resulting matrix is symmetric so we only need the lower triangle
@@ -49,15 +49,17 @@ avg_subpop_sim <- function(spec, labels, endpoints_index, avg_summary) {
     endpoints_indexi <- c(1, endpoints_index[i,], nfreq + 1)
     avg_summaryi <- avg_summary[i,]
 
-    for (j in ulabels[ulabels < i]) {
-      subpop_specj <- spec[, labels == j, drop = F]
-      endpoints_indexj <- c(1, endpoints_index[j,], nfreq + 1)
-      avg_summaryj <- avg_summary[j,]
-      sim_mat[i, j] <- subpop_sim(
-        subpop_speci, subpop_specj,
-        endpoints_indexi, endpoints_indexj,
-        avg_summaryi, avg_summaryj
-      )
+    for (j in ulabels) {
+      if (j < i) {
+        subpop_specj <- spec[, labels == j, drop = F]
+        endpoints_indexj <- c(1, endpoints_index[j,], nfreq + 1)
+        avg_summaryj <- avg_summary[j,]
+        sim_mat[i, j] <- subpop_sim(
+          subpop_speci, subpop_specj,
+          endpoints_indexi, endpoints_indexj,
+          avg_summaryi, avg_summaryj
+        )
+      }
     }
   }
   sim_mat <- sim_mat + t(sim_mat) # make symmetric
@@ -65,11 +67,11 @@ avg_subpop_sim <- function(spec, labels, endpoints_index, avg_summary) {
 }
 
 band_sim <- function(band_spec1, band_spec2, avg_summary1, avg_summary2) {
-  sd1 <- sum((band_spec1 - avg_summary1)^2)
-  sd2 <- sum((band_spec2 - avg_summary2)^2)
+  sd1 <- sqrt(sum((band_spec1 - avg_summary1)^2))
+  sd2 <- sqrt(sum((band_spec2 - avg_summary2)^2))
   union_band_spec <- rbind(band_spec1, band_spec2)
   union_collapsed <- mean(union_band_spec) # unioned collapsed measure of power
-  d <- sum((union_band_spec - union_collapsed)^2)
+  d <- sqrt(sum((union_band_spec - union_collapsed)^2))
   return((sd1 + sd2) / d)
 }
 
@@ -94,7 +96,8 @@ avg_subpop_band_sim <- function(subpop_spec, endpoints_index, avg_summary) {
     # similarity between left and right bands
     sim_vec[b] <- band_sim(band_spec1, band_spec2, avg_summary1, avg_summary2)
   }
-  return(sum(sim_vec) / (nbands - 1))
+  # return(sum(sim_vec) / (nbands - 1))
+  return(sum(sim_vec) / nbands)
 }
 
 avg_global_band_sim <- function(spec, labels, endpoints_index, collapsed) {
