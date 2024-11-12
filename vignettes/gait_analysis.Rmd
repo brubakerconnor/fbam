@@ -176,7 +176,7 @@ We now use FBAM to achieve two goals with the gait variability data:
 1. Estimate a single set of frequency bands for the entire population and 
 2. simultaneously partition subjects into subpopulations with different spectral dynamics and estimate a set of frequency bands for each subpopulation. In both cases, the number of frequency bands will be chosen from between 2 and 6, inclusive, and is set by the `nbands` parameter in the call to `fbam`. In the latter case, the number of subpopulations will be jointly selected from values also between 2 and 6, inclusive, and is set by the `nsubpop` parameter. This is done in parallel by setting the `parallel` parameter to an integer greater than `1`. 
 
-```{r run_fbam, echo=FALSE, cache=TRUE}
+```{r run_fbam, cache=TRUE}
 ncores <- parallel::detectCores() - 1 # use all cores except 1
 fbam_all <- fbam(x, nbands = 2:6, nsubpop = 1, sample_rate = sample_rate, 
                  parallel = ncores)
