@@ -10,7 +10,7 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-set.seed(3)
+set.seed(451)
 ```
 
 ```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
@@ -271,8 +271,26 @@ table(fbam_subpop$selected_solution$labels, labels)
 
 We now look to see if any physiological differences exist between the two 
 subpopulations in terms of age, height, or any of the other subject-level
-descriptors included in the data. Below are the summary statistics for
-the covariates among each of the subpopulations.
+descriptors included in the data. Below are the median and median absolute deviation for
+the numeric covariates among each of the subpopulations.
+
+```{r}
+cols <- c("age", "height", "weight", "gait_speed", "ds_std")
+# median
+desc %>%
+  group_by(subpop_label) %>%
+  select(all_of(cols)) %>%
+  summarise(across(all_of(cols), list(median = median)))
+
+# mad
+desc %>%
+  group_by(subpop_label) %>%
+  select(all_of(cols)) %>%
+  summarise(across(all_of(cols), list(mad = mad)))
+```
+
+
+
 
 ```{r, fig.align='center', fig.width=7.25, fig.height=1.75}
 cols <- c("age", "height", "weight", "gait_speed", "ds_std")
