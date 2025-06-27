@@ -24,7 +24,6 @@ Suggests:
     parallel,
     rmarkdown,
     tidyr
-VignetteBuilder: knitr
 Depends: 
     truncnorm
 LinkingTo: 

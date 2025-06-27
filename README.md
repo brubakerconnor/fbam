@@ -2,8 +2,8 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13397030.svg)](https://doi.org/10.5281/zenodo.13397030)
 
-This package implements the evolutionary algorithm and grid search routine for
-simultaneous subpopulation segmentation and frequency band estimation of 
+This package implements the FBAM method for the
+simultaneous subpopulation and frequency band estimation of 
 multiple stationary time series.
 
 The package can be installed using 
@@ -12,20 +12,13 @@ The package can be installed using
 devtools::install_github("brubakerconnor/fbam")
 ```
 
-By default, `install_github()` does not build package vignettes.
-To build the vignette that reproduces our analysis of gait variability in the article, use
-
-```
-devtools::install_github("brubakerconnor/fbam", build_vignettes = TRUE)
-```
-
-Note that the vignette may take a while to build depending on the computational
-resources available. 
+Supplementary code needed to reproduce the simulation studies and data analysis 
+included in the article can be found [here](https://github.com/brubakerconnor/fbam-extra).
 
 ### Author Information
 
-Connor K. Brubaker\
-Ph.D. Candidate, Department of Statistics\
+Connor K. Brubaker, Ph.D.\
+Department of Statistics\
 Texas A&M University\
 College Station, Texas, United States\
 Email: [brubaker@tamu.edu](mailto:brubaker@tamu.edu)
