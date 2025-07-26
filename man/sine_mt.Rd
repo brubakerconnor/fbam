@@ -4,40 +4,35 @@
 \alias{sine_mt}
 \title{Sine multitaper estimation}
 \usage{
-sine_mt(X, ntapers = floor(sqrt(dim(as.matrix(X))[1])), sample_rate = 1)
+sine_mt(x, ntapers = NULL)
 }
 \arguments{
-\item{X}{Column-wise matrix of replicate time series. A vector is treated as a single replicate.}
+\item{x}{Vector or matrix (columns) of replicate time series. A vector is treated as a single replicate.}
 
-\item{ntapers}{Number of tapers to use in constructing the multitaper estimator. Default value is
-the floor of the square root of the length of the time series (number of rows in \code{X}).}
-
-\item{sample_rate}{The number of samples per unit time. Default value is \code{1}.}
+\item{ntapers}{Number of sine tapers. Default is the floor of the square root of the length of the time series (number of rows in \code{x}).}
 }
 \value{
 A list with the following components:
-\itemize{
-\item \code{mtfreq}: Vector of Fourier frequencies
-\item \code{mtspec}: Column-wise matrix of spectral estimates in correspondence to the rows of \code{X}.
+\describe{
+\item{mtfreq}{Vector of Fourier frequencies}
+\item{mtspec}{Matrix of spectral estimates (columns)}
 }
 }
 \description{
-Compute the multitaper estimator for one or more replicate time series
-using the orthogonal sine tapers.
+Sine multitaper estimation for one or more replicate time series.
 }
 \details{
 The zero frequency and Nyquist frequency (folding frequency) are not included in the resulting estimates.
-The choice of \code{ntapers = floor(sqrt(nrow(X)))} ensures consistency of the resulting estimator.
 }
 \examples{
 # single replicate
-x <- arima.sim(list(ar = 0.6), n = 500)
+x <- arima.sim(list(ar = 0.6), n = 128)
 sine_mt(x)
 
 # many replicates
-X <- matrix(nrow = 500, ncol = 20)
-for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
-sine_mt(X)
+x <- matrix(nrow = 128, ncol = 8)
+for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+sine_mt(x)
 }
 \references{
 Riedel, K.S., and A. Sidorenko. 1995. \emph{Minimum Bias Multiple Taper Spectral Estimation.} IEEE Transactions on Signal Processing 43 (1): 188–95.

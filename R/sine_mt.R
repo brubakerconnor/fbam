@@ -1,22 +1,18 @@
 #' Sine multitaper estimation
 #'
-#' Compute the multitaper estimator for one or more replicate time series
-#' using the orthogonal sine tapers.
+#' Sine multitaper estimation for one or more replicate time series.
 #'
 #' @importFrom stats fft
-#' @param X Column-wise matrix of replicate time series. A vector is treated as a single replicate.
-#' @param ntapers Number of tapers to use in constructing the multitaper estimator. Default value is
-#' the floor of the square root of the length of the time series (number of rows in \code{X}).
-#' @param sample_rate The number of samples per unit time. Default value is \code{1}.
+#' @param x Vector or matrix (columns) of replicate time series. A vector is treated as a single replicate.
+#' @param ntapers Number of sine tapers. Default is the floor of the square root of the length of the time series (number of rows in \code{x}).
 #'
 #' @return A list with the following components:
-#' \itemize{
-#'  \item \code{mtfreq}: Vector of Fourier frequencies
-#'  \item \code{mtspec}: Column-wise matrix of spectral estimates in correspondence to the rows of \code{X}.
+#' \describe{
+#'  \item{mtfreq}{Vector of Fourier frequencies}
+#'  \item{mtspec}{Matrix of spectral estimates (columns)}
 #' }
 #' @details
 #' The zero frequency and Nyquist frequency (folding frequency) are not included in the resulting estimates.
-#' The choice of \code{ntapers = floor(sqrt(nrow(X)))} ensures consistency of the resulting estimator.
 #'
 #' @references
 #' Riedel, K.S., and A. Sidorenko. 1995. *Minimum Bias Multiple Taper Spectral Estimation.* IEEE Transactions on Signal Processing 43 (1): 188–95.
@@ -30,29 +26,38 @@
 #'
 #' @examples
 #' # single replicate
-#' x <- arima.sim(list(ar = 0.6), n = 500)
+#' x <- arima.sim(list(ar = 0.6), n = 128)
 #' sine_mt(x)
 #'
 #' # many replicates
-#' X <- matrix(nrow = 500, ncol = 20)
-#' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
-#' sine_mt(X)
-sine_mt <- function(X, ntapers = floor(sqrt(dim(as.matrix(X))[1])),
-                    sample_rate = 1) {
-  if (!is.matrix(X)) X <- as.matrix(X) # vector treated as single replicate
-  len <- dim(X)[1]
-  if (len < dim(X)[2]) {
-    warning("Wide matrix was provided. Ensure that the matrix is formatted such
+#' x <- matrix(nrow = 128, ncol = 8)
+#' for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+#' sine_mt(x)
+sine_mt <- function(x, ntapers = NULL) {
+
+  # input checks ------------------------------------------------------------
+
+  x <- as.matrix(x)
+  if (is.null(ntapers)) ntapers <- floor(sqrt(nrow(x)))
+
+  len <- dim(x)[1]
+  if (dim(x)[1] < dim(x)[2]) {
+    warning("Wide matrix was provided. Double check that the matrix is such
             that columns (rather than rows) correspond to replicates.")
   }
-  mtfreq <- (sample_rate / len) * 1:(floor(len / 2) - 1)
-  mtspec <- apply(X, 2, function(x) {
-    m <- floor(len / 2) - 1 # number of frequencies excluding 0 and len / 2
-    sine_tapers <- outer(seq_len(ntapers), seq_len(len), function(x, y) {
-      sqrt(2 / (len + 1)) * sin(pi * y * x / (len + 1))
+
+
+  # estimation --------------------------------------------------------------
+
+  mtfreq <- (1 / len) * 1:(floor(len / 2) - 1)
+  nfreq <- length(mtfreq)
+  mtspec <- apply(x, 2, function(z) {
+    sine_tapers <- outer(seq_len(ntapers), seq_len(len), function(z, y) {
+      sqrt(2 / (len + 1)) * sin(pi * y * z / (len + 1))
     })
-    ds <- apply(sine_tapers, 1, function(r) Mod(fft(r * x)[2:(m + 1)])^2)
+    ds <- apply(sine_tapers, 1, function(r) Mod(fft(r * z)[2:(nfreq + 1)])^2)
     return(rowMeans(ds))
   })
+
   return(list(mtfreq = mtfreq, mtspec = mtspec))
 }
