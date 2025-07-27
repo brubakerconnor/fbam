@@ -270,8 +270,9 @@ print.ga <- function(out, freq = NULL) {
 plot.ga <- function(out) {
   ngen <- length(out$avg_loss)
   gen <- seq(ngen)
-  plot(gen, out$avg_loss, type = 'o', xlab = "Generation", ylab = "Loss",
-       main = "Evolution History")
+  plot(gen, out$avg_loss, type = 'o',
+       ylim = c(min(out$min_loss), max(out$avg_loss)),
+       xlab = "Generation", ylab = "Loss", main = "Evolution History")
   lines(gen, out$min_loss, type = 'o', col = 'red')
   grid()
   legend('topright', legend = c('Average loss', 'Minimum loss'),
