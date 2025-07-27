@@ -1,67 +1,88 @@
 #' Frequency band analysis for multiple stationary time series
 #'
-#' Simultaneous segmentation and frequency band estimation for a collection of
-#' independent time series realizations via evolutionary algorithm (EA).
-#' When either or both of the number of frequency bands or subpopulations is
-#' unknown, the final solution is chosen by minimization of validation criteria.
+#' @param x Matrix of replicate time series (columns). A vector is treated as a single replicate.
+#' @param nbands Integer or vector of numbers of frequency bands to consider.
+#' @param nsubpop Integer or vector of numbers of subpopulations to consider.
+#' @param ntapers Number of tapers to use in sine multitaper estimation.
+#' @param ncores Number of cores to use for parallelization.
+#' @param ... Additional arguments to [genetic_algorithm].
 #'
-#' @param X Column-wise matrix of replicate time series. A vector is treated as a single replicate.
-#' @param nbands Possible values for the number of frequencies bands. Must all be greater than or equal to 2.
-#' @param nsubpop Possible values for the number of subpopulations.
-#' If more than one value is supplied, they all must be greater than or equal to 2.
-#' Default value is \code{1}.
-#' @param popsize Population size. Default is \code{50}.
-#' @param maxgen Maximum number of generations to run EA. Default value is \code{500}.
-#' @param maxrun Maxmimum number of generations without improvement (defined below) before the EA is
-#' terminated. Default value is \code{100}.
-#' @param tol Tolerance used in determining improvement. Default value is \code{1e-2} which corresponds to 5% improvement.
-#' @param ntapers Number of tapers used in multitaper estimates from \code{X}.
-#' Default value is \code{floor(sqrt(nrow(as.matrix(X))))}, the floor of the square root
-#' of the length of the time series.
-#' @param sample_rate The number of samples per unit time. Default value is \code{1}.
-#' @param parallel Number of cores to use in parallelization. Default value is \code{1} (no parallelization).
-#'
-#'
-#' @return A list with the following components:
-#' \itemize{
-#'  \item \code{selected_solution}: The selected solution based on minimum validation criterion which is
-#'  itself a list with the following components:
-#'  \itemize{
-#'    \item \code{spec}: Column-wise multitaper estimates in correspondence with the columns of \code{X}.
-#'    \item \code{labels}: Subpopulation assignments.
-#'    \item \code{endpoints}: Row-wise matrix of subpopulation-specific frequency-valued band boundaries.
-#'    \item \code{avg_summary}: Row-wise matrix of subpopulation-specific average summary measures.
-#'    \item \code{rep_summary}: Matrix of replicate-specific summary measures whose rows are in correspondence with
-#'    the columns of \code{X}.
-#'    \item \code{objective}: The objective function value of the final solution.
-#'    \item \code{validation}: The value of the validation criteria.
-#'    \item \code{avgfit}, \code{maxfit}, \code{ninfeasible}: The average fitness value, maximum fitness value, and
-#'    number of infeasible solutions at the end of each generation. Vectors of length equal to the number of generations
-#'    completed before termination of the EA.
-#'    \item \code{params}: List of parameters sent to the EA.
-#'  }
-#'  \item \code{all_solutions}: A list of solutions of the same list structure as \code{selected_solution.}
+#' @returns A list with the following components:
+#' \describe{
+#'  \item{grid}{All solutions across the grid of parameters 'nsubpop' > 1 and 'nbands'.}
+#'  \item{solution}{Selected solution from 'grid' using validation criteria.}
+#'  \item{grid1}{All solutions across the grid of parameters 'nsubpop' = 1 and 'nbands'.}
+#'  \item{solution1}{Selection solution from 'grid1' using validation criteria.}
 #' }
-#' In the case that \code{length(nsubpop) == 1} and \code{length(nbands) == 1}, \code{selected_solution}
-#' and \code{all_solutions} are the same object. This is done intentionally for consistent output structure.
 #' @export
 #'
 #' @examples
-#' X <- matrix(nrow = 500, ncol = 20)
-#' for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
-#' sine_mt(X)
-fbam <- function(X, nbands, nsubpop = 1, popsize = 50,
-                 maxgen = 500, maxrun = 150, tol = 1e-2,
-                 ntapers = floor(sqrt(nrow(as.matrix(X)))),
-                 sample_rate = 1, parallel = 1) {
-  param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop)
-  all_solutions <- parallel::mclapply(1:nrow(param_grid), function(i) {
-    nsubpop <- param_grid$nsubpop[i]
-    nbands <- param_grid$nbands[i]
-    ea(X, nbands, nsubpop, popsize, maxgen, maxrun, tol, ntapers, sample_rate,
-       parallel == 1)
-  }, mc.cores = parallel)
-  validation <- unlist(lapply(all_solutions, function(x) x$validation))
-  selected <- all_solutions[[which.min(validation)]]
-  return(list(selected_solution = selected, all_solutions = all_solutions))
+#' x <- matrix(nrow = 128, ncol = 12)
+#' for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+#' fbam(x, nbands = 2:5, nsubpop = 1)
+#' fbam(x, nbands = 2:5, nsubpop = 3)
+#' fbam(x, nbands = 2, nsubpop = 1:5)
+#' fbam(x, nbands = 2:5, nsubpop = 1:5)
+fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
+
+
+  # input checks ------------------------------------------------------------
+
+  if (is.vector(x)) x <- matrix(x)
+
+  nbands <- nbands[nbands >= 2]
+  if (length(nbands) == 0) {
+    warning("Invalid input for 'nbands'. Setting to 2.")
+    nbands <- 2
+  }
+
+  nsubpop <- nsubpop[nsubpop >= 1]
+  if (length(nsubpop) == 0) {
+    warning("Invalid input for 'nsubpop'. Setting to 1.")
+    nsubpop <- 1
+  }
+
+
+  # spectrum estimation -----------------------------------------------------
+
+  sine_mt_out <- sine_mt(x, ntapers)
+  freq <- sine_mt_out$mtfreq
+  spec <- sine_mt_out$mtspec
+
+  # grid search -------------------------------------------------------------
+
+  # if nsubpop = 1 is one of the requested values:
+  # cannot compare solutions with 1 subpop and those with more than 1
+  # grid search over varying nbands with nsubpop = 1 fixed done first
+  if (1 %in% nsubpop) {
+    nsubpop1_grid <- parallel::mclapply(nbands, function(L) {
+      genetic_algorithm(spec, nbands = L, nsubpop = 1, ...)
+    }, mc.cores = ncores)
+    nsubpop1_validation <- unlist(lapply(nsubpop1_grid, function(x) x$validation))
+    nsubpop1_selected <- nsubpop1_grid[[which.min(nsubpop1_validation)]]
+  } else {
+    nsubpop1_grid <- NULL
+    nsubpop1_selected <- NULL
+  }
+
+
+  # if nsubpop contains values greater than 1:
+  # can compare solutions corresponding to any value of nsubpop > 1
+  # grid search over varying nbands AND nsubpop as requested by user
+  if (length(nsubpop[nsubpop > 1]) > 0) {
+    param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop[nsubpop > 1])
+    grid <- parallel::mclapply(1:nrow(param_grid), function(i) {
+      nsubpop <- param_grid$nsubpop[i]
+      nbands <- param_grid$nbands[i]
+      genetic_algorithm(spec, nbands = nbands, nsubpop = nsubpop, ...)
+    }, mc.cores = ncores)
+    validation <- unlist(lapply(grid, function(x) x$validation))
+    solution <- grid[[which.min(validation)]]
+  } else {
+    grid <- NULL
+    solution <- NULL
+  }
+
+  return(list(grid = grid, solution = solution,
+              grid1 = nsubpop1_grid, solution1 = nsubpop1_selected))
 }

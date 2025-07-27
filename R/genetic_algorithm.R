@@ -34,6 +34,10 @@
 #' @export
 #'
 #' @examples
+#' x <- matrix(nrow = 128, ncol = 12)
+#' for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+#' sine_mt_out <- sine_mt(x)
+#' genetic_algorithm(sine_mt_out$mtspec)
 genetic_algorithm <- function(
     spec, nbands = 2, nsubpop = 1, popsize = 50, factor = 2,
     pmutate_init = 0.5, rate = 50, nislands = 6, nmigrants = 5,

@@ -4,77 +4,38 @@
 \alias{fbam}
 \title{Frequency band analysis for multiple stationary time series}
 \usage{
-fbam(
-  X,
-  nbands,
-  nsubpop = 1,
-  popsize = 50,
-  maxgen = 500,
-  maxrun = 150,
-  tol = 0.01,
-  ntapers = floor(sqrt(nrow(as.matrix(X)))),
-  sample_rate = 1,
-  parallel = 1
-)
+fbam(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...)
 }
 \arguments{
-\item{X}{Column-wise matrix of replicate time series. A vector is treated as a single replicate.}
+\item{x}{Matrix of replicate time series (columns). A vector is treated as a single replicate.}
 
-\item{nbands}{Possible values for the number of frequencies bands. Must all be greater than or equal to 2.}
+\item{nbands}{Integer or vector of numbers of frequency bands to consider.}
 
-\item{nsubpop}{Possible values for the number of subpopulations.
-If more than one value is supplied, they all must be greater than or equal to 2.
-Default value is \code{1}.}
+\item{nsubpop}{Integer or vector of numbers of subpopulations to consider.}
 
-\item{popsize}{Population size. Default is \code{50}.}
+\item{ntapers}{Number of tapers to use in sine multitaper estimation.}
 
-\item{maxgen}{Maximum number of generations to run EA. Default value is \code{500}.}
+\item{ncores}{Number of cores to use for parallelization.}
 
-\item{maxrun}{Maxmimum number of generations without improvement (defined below) before the EA is
-terminated. Default value is \code{100}.}
-
-\item{tol}{Tolerance used in determining improvement. Default value is \code{1e-2} which corresponds to 5\% improvement.}
-
-\item{ntapers}{Number of tapers used in multitaper estimates from \code{X}.
-Default value is \code{floor(sqrt(nrow(as.matrix(X))))}, the floor of the square root
-of the length of the time series.}
-
-\item{sample_rate}{The number of samples per unit time. Default value is \code{1}.}
-
-\item{parallel}{Number of cores to use in parallelization. Default value is \code{1} (no parallelization).}
+\item{...}{Additional arguments to \link{genetic_algorithm}.}
 }
 \value{
 A list with the following components:
-\itemize{
-\item \code{selected_solution}: The selected solution based on minimum validation criterion which is
-itself a list with the following components:
-\itemize{
-\item \code{spec}: Column-wise multitaper estimates in correspondence with the columns of \code{X}.
-\item \code{labels}: Subpopulation assignments.
-\item \code{endpoints}: Row-wise matrix of subpopulation-specific frequency-valued band boundaries.
-\item \code{avg_summary}: Row-wise matrix of subpopulation-specific average summary measures.
-\item \code{rep_summary}: Matrix of replicate-specific summary measures whose rows are in correspondence with
-the columns of \code{X}.
-\item \code{objective}: The objective function value of the final solution.
-\item \code{validation}: The value of the validation criteria.
-\item \code{avgfit}, \code{maxfit}, \code{ninfeasible}: The average fitness value, maximum fitness value, and
-number of infeasible solutions at the end of each generation. Vectors of length equal to the number of generations
-completed before termination of the EA.
-\item \code{params}: List of parameters sent to the EA.
+\describe{
+\item{grid}{All solutions across the grid of parameters 'nsubpop' > 1 and 'nbands'.}
+\item{solution}{Selected solution from 'grid' using validation criteria.}
+\item{grid1}{All solutions across the grid of parameters 'nsubpop' = 1 and 'nbands'.}
+\item{solution1}{Selection solution from 'grid1' using validation criteria.}
 }
-\item \code{all_solutions}: A list of solutions of the same list structure as \code{selected_solution.}
-}
-In the case that \code{length(nsubpop) == 1} and \code{length(nbands) == 1}, \code{selected_solution}
-and \code{all_solutions} are the same object. This is done intentionally for consistent output structure.
 }
 \description{
-Simultaneous segmentation and frequency band estimation for a collection of
-independent time series realizations via evolutionary algorithm (EA).
-When either or both of the number of frequency bands or subpopulations is
-unknown, the final solution is chosen by minimization of validation criteria.
+Frequency band analysis for multiple stationary time series
 }
 \examples{
-X <- matrix(nrow = 500, ncol = 20)
-for (i in 1:20) X[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 500)
-sine_mt(X)
+x <- matrix(nrow = 128, ncol = 12)
+for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+fbam(x, nbands = 2:5, nsubpop = 1)
+fbam(x, nbands = 2:5, nsubpop = 3)
+fbam(x, nbands = 2, nsubpop = 1:5)
+fbam(x, nbands = 2:5, nsubpop = 1:5)
 }

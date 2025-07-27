@@ -69,3 +69,9 @@ A object of class "ga" with the following elements:
 \description{
 Optimization of FBAM loss function
 }
+\examples{
+x <- matrix(nrow = 128, ncol = 12)
+for (i in 1:ncol(x)) x[,i] <- arima.sim(list(ar = runif(1, 0.2, 0.8)), n = 128)
+sine_mt_out <- sine_mt(x)
+genetic_algorithm(sine_mt_out$mtspec)
+}
