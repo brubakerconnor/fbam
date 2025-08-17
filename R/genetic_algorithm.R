@@ -48,29 +48,16 @@ genetic_algorithm <- function(
   # input checks ---------------------------------------------------------------
 
   if (is.vector(spec)) spec <- as.matrix(spec)
-  if (nbands < 2) {
-    stop("'nbands' must be at least 2.")
-  }
+  if (nbands < 2) stop("'nbands' must be at least 2.")
   if (nsubpop < 1 | nsubpop > ncol(spec)) {
-    stop("'nsubpop' must be at least 1 and no greater than the number of
-         provided replicates (columns in 'spec').")
+    stop("'nsubpop' must be between 1 and number of columns in 'spec'.")
   }
-  if (popsize < 1) {
-    stop("'popsize' must be at least 1. Using recommended setting of 50.")
-    popsize <- 50
-  }
-  if (maxgen < 1) {
-    warning("'maxgen' must be at least 1. Using recommended setting of 500.")
-    maxgen <- 500
-  }
-  if (maxrun < 1) {
-    stop("'maxrun' must be at least 1. Setting to value of 'maxgen'.")
-    maxrun <- maxgen
-  }
+  if (popsize < 1) stop("'popsize' must be positive.")
+  if (maxgen < 1) stop("'maxgen' must be positive.")
+  if (maxrun < 1) stop("'maxrun' must be positive.")
   if (maxrun > maxgen) {
     warning("maxrun greater than maxgen so convergence will be declared only
             when maxgen number of generations have been completed.")
-    maxrun <- maxgen
   }
   if (tol > 1) {
     tol <- 1e-3
@@ -78,11 +65,12 @@ genetic_algorithm <- function(
   }
   if (tol < 1e-3) {
     warning("'tol' was set below recommended value of 1e-3 which may
-            lead to longer convergence times.")
+            result in longer convergence time.")
   }
-  nrep <- ncol(spec)
 
   # initialization -------------------------------------------------------------
+
+  nrep <- ncol(spec)
 
   if(verbose) cat('[INFO] Initialization population(s)\n')
   pops <- lapply(seq(nislands), function(x) {
