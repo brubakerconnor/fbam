@@ -158,7 +158,7 @@ ga <- function(spec, nbands = 2, nsubpop = 1, popsize = 50, pmutate = 0.15,
   # final assignment
   labels <- rep(1, ncol(spec))
   if (nsubpop > 1) labels <- l2_assign(spec, solution$cuts, solution$avg_power)
-  
+
   ## selection index
   s_band <- band_sim(spec, labels, solution$cuts, solution$avg_power)
   s_pop <- NULL
@@ -199,21 +199,21 @@ plot.ga <- function(gaout, which = c(1, 2)) {
   if (1 %in% which) {
     plot_max <- max(gaout$avgloss, gaout$minloss)
     plot_min <- min(gaout$avgloss, gaout$minloss)
-    plot(seq(1, ngen), gaout$avgloss, type = 'o', 
+    plot(seq(1, ngen), gaout$avgloss, type = 'o',
         xlab = "generation", ylab = "loss",
         main = "Loss history",
         ylim = c(plot_min, plot_max))
     lines(seq(1, ngen), gaout$minloss, type = 'o', col = 2)
     abline(v = seq(gaout$params$epoch, ngen, by = gaout$params$epoch), lty = 2)
-    legend("topright", lty = c(1, 1, 2), col = c(1, 2, 1), 
+    legend("topright", lty = c(1, 1, 2), col = c(1, 2, 1),
            legend = c("average loss", "minimum loss", "migration event"))
-  } 
+  }
   if (2 %in% which) {
-    plot(seq(1, ngen), gaout$ninfeasible, type = 'o', 
+    plot(seq(1, ngen), gaout$ninfeasible, type = 'o',
         xlab = "generation", ylab = "number infeasible",
         main = "Infeasible solutions per generation")
     abline(v = seq(gaout$params$epoch, ngen, by = gaout$params$epoch), lty = 2)
-    legend("topright", lty = 1:2, col = 1, 
+    legend("topright", lty = 1:2, col = 1,
            legend = c("# infeasible sols", "migration event"))
   }
 }
@@ -423,7 +423,7 @@ model1 <- function(nrep, len) {
     }
   }
   x <- apply(rbind(spec, spec[dim(spec)[1]:1, ]), 2, spec_sim)
-  mtout <- fbam::sine_mt(x, ntapers = floor(sqrt(len / 2)))
+  mtout <- sine_mt(x, ntapers = floor(sqrt(len / 2)))
   return(list(x = x, labels = labels, freq = freq, spec = spec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
 }
@@ -451,7 +451,7 @@ model2 <- function(nrep, len, peaks, bw, sd = 2.25) {
     x[, nrep + i] <- arima.sim(list(ar = c(phi1[2], phi2[2])), n = len, sd = sd)
     x[, 2 * nrep + i] <- arima.sim(list(ar = c(phi1[3], phi2[3])), n = len, sd = sd)
   }
-  mtout <- fbam::sine_mt(x)
+  mtout <- sine_mt(x)
   return(list(x = x, labels = labels, freq = freq, spec = spec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
 }
@@ -518,7 +518,7 @@ model3 <- function(nrep, len) {
   labels <- rep(1:3, each = nrep)
   z <- x + y
   zspec <- xspec + yspec
-  mtout <- fbam::sine_mt(z)
+  mtout <- sine_mt(z)
   return(list(x = z, labels = labels, freq = freq, spec = zspec,
               mtfreq = mtout$mtfreq, mtspec = mtout$mtspec))
 }
