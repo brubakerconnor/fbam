@@ -10,7 +10,7 @@ These scripts implement the FBAM method, simulation studies, and application fou
 
 ## Author Information
 
-Connor Brubaker, Ph.D.
-Department of Statistics
-Texas A&M University
+Connor Brubaker, Ph.D.\
+Department of Statistics\
+Texas A&M University\
 Email: [brubaker@tamu.edu](mailto:brubaker@tamu.edu)
