@@ -21,7 +21,7 @@ fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
     nsubpop1_grid <- parallel::mclapply(nbands, function(L) {
       ga(spec, nbands = L, nsubpop = 1, ...)
     }, mc.cores = ncores)
-    nsubpop1_s <- unlist(lapply(nsubpop1_grid, function(x) x$s_joint))
+    nsubpop1_s <- unlist(lapply(nsubpop1_grid, function(x) x$s_band))
     nsubpop1_selected <- nsubpop1_grid[[which.min(nsubpop1_s)]]
   } else {
     nsubpop1_grid <- NULL
