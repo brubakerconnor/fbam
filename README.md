@@ -6,10 +6,3 @@ Frequency band analysis of multiple stationary time series (FBAM) algorithm desc
 1. `fbam_Rfunctions.R`: genetic algorithm, grid search routine, simulation models, and sine multitaper estimation.
 3. `fbam_demo.R`: demo using simulated data.
 4. `fbam_gait.R`: analysis of gait variability.
-
-## Author Information
-
-Connor Brubaker, Ph.D.\
-Department of Statistics\
-Texas A&M University\
-Email: [brubaker@tamu.edu](mailto:brubaker@tamu.edu)
