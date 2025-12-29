@@ -1,3 +1,5 @@
+library(future.apply)
+
 fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
   if (is.vector(x)) {
     x <- matrix(x)
@@ -15,21 +17,20 @@ fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
   sine_mt_out <- sine_mt(x, ntapers)
   freq <- sine_mt_out$mtfreq
   spec <- sine_mt_out$mtspec
+  
+  ## set up parallelism
+  plan(multisession, workers = ncores)
 
   # if nsubpop = 1 is one of the requested values:
   # cannot compare solutions with 1 subpop and those with more than 1
   # grid search over varying nbands with nsubpop = 1 fixed done first
   if (1 %in% nsubpop) {
-    print("s_band (nsubpop = 1)")
-    nsubpop1_grid <- parallel::mclapply(
+    nsubpop1_grid <- future_lapply(
       nbands,
-      function(L) {
-        ga(spec, nbands = L, nsubpop = 1, ...)
-      },
-      mc.cores = ncores
+      \(x) ga(spec, nbands = x, nsubpop = 1, ...),
+      future.seed = TRUE
     )
     nsubpop1_s <- unlist(lapply(nsubpop1_grid, function(x) x$s_band))
-    print(nsubpop1_s)
     nsubpop1_selected <- nsubpop1_grid[[which.min(nsubpop1_s)]]
   } else {
     nsubpop1_grid <- NULL
@@ -41,29 +42,26 @@ fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
   # grid search over varying nbands AND nsubpop as requested by user
   if (length(nsubpop[nsubpop > 1]) > 0) {
     param_grid <- expand.grid(nbands = nbands, nsubpop = nsubpop[nsubpop > 1])
-    grid <- parallel::mclapply(
+    grid <- future_lapply(
       1:nrow(param_grid),
       function(i) {
         nsubpop <- param_grid$nsubpop[i]
         nbands <- param_grid$nbands[i]
         ga(spec, nbands = nbands, nsubpop = nsubpop, ...)
       },
-      mc.cores = ncores
+      future.seed = TRUE
     )
 
     if (length(nsubpop) == 1) {
       ## only one nsubpop value - use s_band for selection
-      print("s_band")
       s <- unlist(lapply(grid, function(x) x$s_band))
       solution <- grid[[which.min(s)]]
     } else if (length(nbands) == 1) {
       ## only one nbands value - use s_pop for selection
-      print("s_pop")
       s <- unlist(lapply(grid, function(x) x$s_pop))
       solution <- grid[[which.min(s)]]
     } else {
       ## use s_joint after scaling
-      print("s_joint")
       s_band <- unlist(lapply(grid, function(x) x$s_band))
       s_band_scaled <- s_band / max(s_band)
 
