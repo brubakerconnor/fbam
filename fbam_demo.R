@@ -11,7 +11,7 @@ dat <- get(model_name)(nrep, len)
 ## run with a fixed number of subpopulations and automatically determine 
 ## the number of frequency bands L = 2, ..., 6
 ## this function is run serially by default. specify ncores to run in parallel
-fbam_out <- fbam(dat$x, nbands = 2:6, nsubpop = 3)
+fbam_out <- fbam(dat$x, nbands = 2:6, nsubpop = 1)
 
 ## automatically select number of subpopulations and frequeny bands
 ## from J = 2, ..., 6 and L = 2, ..., 6
@@ -21,14 +21,5 @@ fbam_out <- fbam(dat$x, nbands = 2:6, nsubpop = 2:6)
 ## two solutions are returned:
 ## (1) solution1: nsubpop = 1
 ## (2) solution: solution with automatically selection of J over values > 1
-fbam_out <- fbam(dat$x, nbands = 2:6, nsubpop = 1, ncores = 4)
+fbam_out <- fbam(dat$x, nbands = 2:6, nsubpop = 1:6, ncores = 4)
 
-# structure and save output
-run <- list(
-  fbam_out = fbam_out,
-  time = fbam_time,
-  model = model,
-  nrep = nrep,
-  len = len
-)
-save(run, file = fname)
