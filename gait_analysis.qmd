@@ -1,0 +1,578 @@
+---
+title: "Frequency Band Analysis of Stride Interval Time Series Using FBAM"
+author: "Connor Brubaker"
+format: html
+---
+
+
+```{r}
+## set seed, load required packages and source FBAM functions
+set.seed(451)
+pacman::p_load(tidyverse, janitor, signal, gsignal, patchwork)
+source("fbam_Rfunctions.R")
+```
+
+## Data pre-processing
+
+The data used in this analysis can be obtained directly from [PhysioNet](https://physionet.org/content/gaitndd/1.0.0/), and has been provided in this repository as obtained on 31 October 2024.
+
+The functions below implement the pre-processing steps described in the article, namely (1) imputation of outliers and (2) interporation, linear detrending and high-pass filtering, and standardization.
+
+
+```{r}
+## read stride interval series and impute outliers with moving average model
+## path: string path to .ts file
+read_impute_stride <- function(path) {
+  read_delim(path, col_names = FALSE, show_col_types = FALSE) %>%
+    select(X1, X2) %>%
+    rename(elapsed_time = X1, left_stride = X2) %>%
+    dplyr::mutate(
+      na_outliers = case_when(
+        left_stride < quantile(left_stride, 0.01) ~ NA,
+        left_stride > quantile(left_stride, 0.96) ~ NA,
+        TRUE ~ left_stride
+      ),
+      left_stride_impute = imputeTS::na_ma(na_outliers, k = 4)
+    )
+}
+
+## interpolate, linearly detrend, filter, and standardize stride interval series
+## df: output of read_stride()
+process_imputed_stride <- function(df, sample_rate = 2, n_obs = 420) {
+  int <- approx(
+    x = df$elapsed_time,
+    y = df$left_stride_impute,
+    xout = seq(
+      from = min(df$elapsed_time),
+      by = 1 / sample_rate,
+      length = n_obs
+    )
+  )$y
+  bf <- signal::butter(2, W = 0.001, type = "high")
+  out <- as.vector(gsignal::detrend(int, p = 1))
+  out <- signal::filter(bf, out)
+  out <- ts(out, start = 1, frequency = sample_rate)
+  return(out / sd(out))
+}
+```
+
+### Stride interval time series 
+
+This pre-processing pipeline is applied to each `.ts` file in the data repository. The spectrum of each subject is then estimated using the sine multitaper estimator. 
+
+```{r}
+## pre-process stride interval time series data and obtain multitaper estimates
+gait_data <- tibble(
+  ts_path = list.files(
+    "data/gait-in-neurodegenerative-disease-database-1.0.0",
+    pattern = "\\.ts$",
+    full.names = TRUE
+  ),
+  subject_id = tools::file_path_sans_ext(basename(ts_path))
+) %>%
+
+  ## the following records were removed due to the occurence of too many outliers
+  dplyr::filter(!subject_id %in% c("als12", "als4", "park11")) %>%
+
+  ## raw stride interval time series, impute outliers
+  dplyr::mutate(stride_raw = map(ts_path, ~ read_impute_stride(.x))) %>%
+
+  ## interpolate, detrend, filter, standardize
+  dplyr::mutate(
+    stride_processed = map(stride_raw, ~ process_imputed_stride(.x))
+  ) %>%
+
+  ## multitaper estimation
+  dplyr::mutate(stride_mtspec = map(stride_processed, ~ sine_mt(.x))) %>%
+
+  ## reformat multitaper output
+  dplyr::mutate(
+    stride_mtspec = map(stride_mtspec, \(.x) {
+      tibble(freq = 2 * .x$mtfreq, est = .x$mtspec[, 1])
+    })
+  )
+```
+
+### Subject-level covariates
+
+The original data from PhysioNet also included a subject descriptors file which includes the following information:
+
+* The age (years), height (meters), and weight (kilograms) of the subject,
+* the sex of the subject,
+* the average gait speed (meters/sec) of the subject during the observed stride, and
+* a measure of duration or severity of disease.
+
+For subjects with PD, the severity is measured by the Hohn and Yahr score (a higher score indicates more advanced disease). For subjects with HD, this is measured by the total functional capacity measure (TFCM; a lower score indicates more advanced functional impairment). For the subjects with ALS, duration is defined as the time in months since diagnosis. For the control subjects, 0 is used as a place holder.
+
+To facilitate comparisons of disease severity across groups, we compute a standardized measure of severity for each subject so that a score of 0 corresponds to least severe and 1 corresponds to most severe. For subjects with Huntington's disease, the total functional capacity measure ranges from 0 to 13 where 0 indicates no functional capacity and 13 indicates fully independent with minimal symptoms. The standardized score of the $k$th HD subject is defined as 
+
+$$
+\mathrm{Standardized\ HD\ Score}_k = 1 - \frac{\mathrm{TFCM}_k}{13}
+$$
+
+where $\mathrm{TFCM}_k$ is the total functional capacity measure of the $k$th HD subject. For PD subjects, the Hohn and Yahr score ranges from 1 to 5 where 5 indicates the most severe disease. The standardized score of the $k$th PD subject is consequently defined as 
+
+$$
+\mathrm{Standardized\ PD\ Score}_k = \frac15(\mathrm{HY}_k - 1)
+$$
+
+where $\mathrm{HY}_k$ is the Hohn and Yahr score of the $k$th PD subject. Finally, for ALS subjects, since ALS generally progresses with age (albeit at different rates between subjects), we define the standardized "severity" score for the $k$th ALS patient as 
+
+$$
+\mathrm{Standardized\ ALS\ Score}_k = \frac{\mathrm{D}_k - \min_{k\in\mathrm{ALS}}\mathrm{D}}{\max_{k\in\mathrm{ALS}}\mathrm{D} - \min_{k\in\mathrm{ALS}}\mathrm{D}}
+$$
+
+where $\min_{k\in\mathrm{ALS}}\mathrm{D}$ and $\max_{k\in\mathrm{ALS}}\mathrm{D}$ are the minimum and maximum times since diagnosis among the ALS subjects, respectively. 
+
+**Note**. The original `subject-description.txt` file from PhysioNet contains a typo on lines 37-38. The TFCM score for subject `hunt20` was included alone on line 38 whereas it should have been included at the end of line 37. We have manually fixed this.
+
+```{r}
+covariates <- read_delim(
+  "data/gait-in-neurodegenerative-disease-database-1.0.0/subject-description_CLEANED.tsv",
+  na = "MISSING",
+  show_col_types = FALSE,
+  delim = "\t"
+) %>%
+  clean_names("snake") %>%
+  rename(subject_id = subjectid, label = group) %>%
+
+  ## remove same subjects as above
+  dplyr::filter(!subject_id %in% c("als12", "als4", "park11")) %>%
+
+  ## als subjects are called "subjects" in the original data
+  dplyr::mutate(label = str_replace_all(label, "subjects", "als")) %>%
+  dplyr::mutate(
+    label = factor(
+      label,
+      levels = c("control", "als", "hunt", "park"),
+      labels = c("Control", "ALS", "Huntington's", "Parkinson's")
+    )
+  ) %>%
+
+  ## impute missing values with mean
+  group_by(label) %>%
+  dplyr::mutate(across(
+    where(is.numeric),
+    ~ if_else(is.na(.), mean(., na.rm = TRUE), .)
+  )) %>%
+  ungroup()
+
+## standardization of duration and severity scores
+als_ds_bounds <- covariates %>%
+  dplyr::filter(label == "ALS") %>%
+  summarise(min = min(duration_severity), max = max(duration_severity)) %>%
+  as.integer()
+
+covariates <- covariates %>%
+  dplyr::mutate(
+    duration_severity_std = case_when(
+      label == "Huntington's" ~ 1 - (duration_severity / 13),
+      label == "Parkinson's" ~ (duration_severity - 1) / 5,
+      label == "ALS" ~ (duration_severity - als_ds_bounds[1]) /
+        (als_ds_bounds[2] - als_ds_bounds[1]),
+      label == "Control" ~ 0
+    )
+  )
+
+## join time series data with covariates at subject-level
+gait_data <- gait_data %>%
+  full_join(covariates, by = "subject_id")
+
+## save data
+save(gait_data, file = "gait_data.rds")
+```
+
+### Figure 1
+Figure 1 of the article is recreated below. 
+
+```{r, fig.align='center', fig.width=8, fig.height=4}
+## top row: time series
+ts_plots <- map(levels(gait_data$label), function(.x) {
+  tmp <- gait_data %>%
+    dplyr::filter(label == .x) %>%
+    slice(1) %>%
+    select(stride_processed) %>%
+    pull()
+  p <- tibble(time = time(tmp[[1]]), stride = as.numeric(tmp[[1]])) %>%
+    ggplot() +
+    geom_line(aes(x = time, y = stride)) +
+    scale_x_continuous() +
+    labs(x = 'Time (seconds)', y = 'Seconds', title = .x) +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5))
+  return(p)
+})
+
+## bottom row: multitaper estimates
+max_mtspec <- max(
+  gait_data %>%
+    select(stride_mtspec) %>%
+    unnest(cols = stride_mtspec) %>%
+    select(est)
+)
+mt_plots <- map(levels(gait_data$label), function(.x) {
+  gait_data %>%
+    dplyr::filter(label == .x) %>%
+    select(subject_id, stride_mtspec) %>%
+    unnest(cols = stride_mtspec) %>%
+    ggplot(aes(x = freq, y = est, group = subject_id)) +
+    scale_x_continuous(breaks = seq(0, 1, length = 3)) +
+    geom_line(linewidth = 0.25) +
+    labs(x = "Hz", y = "Power") +
+    ylim(0, max(max_mtspec)) +
+    theme_bw()
+})
+p <- wrap_plots(c(ts_plots, mt_plots), nrow = 2)
+ggsave("plots/figure1.png", p, width = 8, height = 4)
+plot(p)
+```
+
+## Frequency band estimation
+FBAM is used to achieve two goals:
+
+1. Estimate a single set of frequency bands for the entire population and 
+2. simultaneously partition subjects into subpopulations with different spectral dynamics and estimate a set of frequency bands for each subpopulation. In both cases, the number of frequency bands will be chosen from between 2 and 6, inclusive, and is set by the `nbands` parameter in the call to `fbam`. In the latter case, the number of subpopulations will be jointly selected from values also between 2 and 6, inclusive, and is set by the `nsubpop` parameter. This is done in parallel by setting the `parallel` parameter to an integer greater than `1`. 
+
+`fbam` expects a column-wise data frame of time series data, that is, the argument `x` should be a wide-format data frame where columns correspond to replicates. A similar matrix of multitaper estimates is created for plotting later on.
+
+```{r}
+x <- gait_data %>%
+
+  ## each object in the stride_processed column is a ts object
+  ## extract the timestamps and values into two separate columns
+  dplyr::mutate(
+    stride_df = map(stride_processed, \(.x) {
+      tibble(time = time(.x), stride = as.numeric(.x))
+    })
+  ) %>%
+
+  ## place into wide format
+  select(subject_id, stride_df) %>%
+  unnest(cols = stride_df) %>%
+  pivot_wider(names_from = subject_id, values_from = stride) %>%
+  select(-time)
+
+head(x)
+```
+
+```{r}
+mtspec <- gait_data %>%
+  select(subject_id, stride_mtspec) %>%
+  unnest(cols = stride_mtspec) %>%
+  pivot_wider(names_from = subject_id, values_from = est)
+```
+
+The output of FBAM is a list with the components
+
+* `grid`: All solutions over the grid of parameters `nsubpop` $\times$ `nbands` for values of `nsubpop > 1`.
+* `solution`: The solution chosen from `grid` using the selection criteria.
+* `nsubpop1_grid`: All solutions over a grid of values `nbands` with `nsubpop = 1`. If `1` is not included in the argument `nsubpop` when `fbam` is called, this component is `NULL`.
+* `nsubpop1_solution`: The chosen solution from `nsubpop1_grid` using the frequency band selection criteria. If `1` is not included in the argument `nsubpop` when `fbam` is called, this component is `NULL`.
+
+```{r}
+if (file.exists("gait_fbam.rds")) {
+  load("gait_fbam.rds")
+} else {
+  fbam_out <- fbam(x[, -1], nbands = 2:6, nsubpop = 1:6, ncores = ncores)
+  save(fbam_out, file = "gait_fbam.rds")
+}
+```
+
+### Summarization using one subpopulation
+
+```{r}
+## number of bands and their cutpoints
+nsubpop1_nbands <- fbam_out$nsubpop1_solution$params$nbands
+nsubpop1_cuts <- fbam_out$nsubpop1_solution$cuts
+nsubpop1_cuts_freq <- mtspec$freq[nsubpop1_cuts[-c(1, nsubpop1_nbands + 1)]]
+print(paste0("Number of frequency bands: ", nsubpop1_nbands))
+print("Frequency band cut points (Hz): ")
+print(nsubpop1_cuts_freq)
+
+## replicate-specific summary measures
+nsubpop1_rep_summary <- data.frame(
+  summarize_power(mtspec[, -1], nsubpop1_cuts)$rep
+) %>%
+  rownames_to_column("subject_id") %>%
+  rename(nsubpop1_lf = X1, nsubpop1_hf = X2)
+gait_data <- gait_data %>%
+  left_join(nsubpop1_rep_summary, by = "subject_id")
+```
+
+#### Kruskal-Wallis test to evaluate differences in terms of average power
+
+The degree to which FBAM has preserved differences between groups is evaluated using the Kruskal-Wallis test. 
+
+```{r}
+w <- seq(2, nrow(mtspec)) # candidate boundaries
+pvalues <- unlist(lapply(w, function(.w) {
+  cuts <- c(1, .w, nrow(mtspec) + 1)
+  rep_summary_mat <- summarize_power(mtspec[, -1], cuts)$rep
+  return(kruskal.test(rep_summary_mat[, 1] ~ gait_data$label)$p.value)
+}))
+```
+
+Reproduce Figure 5.
+
+```{r, fig.align='center', fig.width=12, fig.height=4}
+spec_plot <- mtspec %>%
+  pivot_longer(-1, names_to = "subject_id", values_to = "est") %>%
+  ggplot(aes(x = freq, y = est, group = subject_id)) +
+  geom_line(linewidth = 0.25) +
+  labs(x = "Hz", y = "Power") +
+  geom_vline(xintercept = nsubpop1_cuts_freq, linetype = "dashed") +
+  theme_bw()
+boxplot <- ggplot(gait_data, aes(x = label, y = nsubpop1_lf)) +
+  geom_boxplot() +
+  geom_jitter(shape = 16, position = position_jitter(0.2)) +
+  labs(x = "Group", y = "LF Power") +
+  theme_bw()
+pvalues_df <- data.frame(w = mtspec$freq[w], pvalues = pvalues)
+pvalue_plot <- ggplot(data = pvalues_df, aes(x = w, y = log(pvalues))) +
+  geom_line() +
+  geom_vline(
+    xintercept = nsubpop1_cuts_freq,
+    linetype = 'dashed',
+    color = 'red'
+  ) +
+  geom_hline(yintercept = log(0.05), linetype = 'dashed') +
+  labs(x = 'Hz', y = 'Logarithm of p-value') +
+  theme_bw()
+p <- wrap_plots(spec_plot, boxplot, pvalue_plot, nrow = 1)
+ggsave("plots/figure5.png", p, width = 12, height = 4)
+plot(p)
+```
+
+### Summarization using multiple subpopulations
+
+Print number of subpopulations and estimated frequency bands along with their cutpoints.
+
+```{r}
+nsubpop <- fbam_out$solution$params$nsubpop
+nbands <- fbam_out$solution$params$nbands
+cuts <- fbam_out$solution$cuts[, -c(1, nbands + 1)] # row-wise by subpopulation
+cuts_freq <- mtspec$freq[cuts]
+print(paste0("Number of estimated subpopulations: ", nsubpop))
+print(paste0("Number of estimated frequency bands: ", nbands))
+for (j in seq_along(cuts_freq)) {
+  print(paste0(
+    "Frequency band cut points for subpopulation ",
+    j,
+    ": ",
+    round(cuts_freq[j], 4)
+  ))
+}
+```
+
+Percent variability captured.
+
+```{r}
+mtspec <- gait_data %>%
+  select(subject_id, stride_mtspec) %>%
+  unnest(cols = stride_mtspec) %>%
+  pivot_wider(names_from = subject_id, values_from = est)
+sstotal <- sum((mtspec[, -1] - mean(as.matrix(mtspec[, -1])))^2)
+ssresid <- loss_fn(
+  list(list(
+    cuts = fbam_out$solution$cuts,
+    avg_power = fbam_out$solution$avg_power
+  )),
+  mtspec[, -1]
+) *
+  nrow(mtspec)
+print(100 * (1 - (ssresid / sstotal)))
+```
+
+Table 3.
+
+```{r}
+## add subpopulation assignments and frequency bands to gait_data
+bands <- tibble(subpop = seq(3), freq_bands = cuts_freq)
+gait_data <- gait_data %>%
+  dplyr::mutate(
+    subpop = fbam_out$solution$labels
+  ) %>%
+  left_join(bands, by = "subpop")
+
+## Table 3
+table(gait_data$label, gait_data$subpop)
+gait_data %>%
+  select(
+    subpop,
+    age_yrs,
+    height_meters,
+    weight_kg,
+    gait_speed_m_sec,
+    duration_severity_std
+  ) %>%
+  group_by(subpop) %>%
+  summarize(across(everything(), list(mean = mean, sd = sd), na.rm = TRUE))
+
+## kruskal-wallis test on each numeric variable
+cols <- c(
+  "age_yrs",
+  "height_meters",
+  "weight_kg",
+  "gait_speed_m_sec",
+  "duration_severity_std"
+)
+for (col in cols) {
+  y <- gait_data %>% select(all_of(col)) %>% unlist()
+  pval <- kruskal.test(y, g = gait_data$subpop)$p.value
+  cat(
+    'Wilcoxon p-value for variable ',
+    col,
+    ': ',
+    round(pval, 6),
+    '\n',
+    sep = ''
+  )
+}
+```
+
+Reproduce Figure 4.
+
+```{r, fig.align='center', fig.width=12, fig.height=4}
+summary <- gait_data %>%
+  select(subject_id, subpop) %>%
+  left_join(bands, by = "subpop")
+p <- mtspec %>%
+  pivot_longer(-1, names_to = "subject_id", values_to = "est") %>%
+  left_join(summary, by = "subject_id") %>%
+  dplyr::mutate(subpop = paste0("Subpopulation ", subpop)) %>%
+  ggplot(aes(x = freq, y = est, group = subject_id)) +
+  facet_wrap(~subpop) +
+  geom_line(linewidth = 0.25) +
+  geom_vline(
+    aes(xintercept = freq_bands),
+    linetype = "dashed",
+    linewidth = 0.75,
+    color = "red"
+  ) +
+  theme_bw()
+ggsave("plots/figure4.png", p, width = 12, height = 4)
+plot(p)
+```
+
+### Informative Capacity of Summary Measures
+
+```{r}
+## 0 for non-HD, 1 for HD
+gait_data <- gait_data %>%
+  dplyr::mutate(
+    hd = case_when(
+      label == "Huntington's" ~ 1,
+      TRUE ~ 0
+    )
+  )
+
+nfolds <- 6
+nsamples <- nrow(gait_data)
+fold_id <- sample(c(
+  rep(1:nfolds, each = floor(nsamples / nfolds)),
+  1:(nsamples %% nfolds)
+))
+
+base_acc <- lf_acc <- rep(0, nfolds)
+for (i in 1:nfolds) {
+  train <- gait_data[fold_id != i, ]
+  test <- gait_data[fold_id == i, ]
+  glm_base <- glm(
+    hd ~ age_yrs + height_meters + gait_speed_m_sec,
+    data = train,
+    family = binomial()
+  )
+  glm_lf <- glm(
+    hd ~ age_yrs + height_meters + gait_speed_m_sec + nsubpop1_lf,
+    data = train,
+    family = binomial()
+  )
+  base_pred <- as.numeric(
+    predict(glm_base, newdata = test, type = 'response') > 0.5
+  )
+  lf_pred <- as.numeric(
+    predict(glm_lf, newdata = test, type = 'response') > 0.5
+  )
+  base_acc[i] <- mean(base_pred == test$hd)
+  lf_acc[i] <- mean(lf_pred == test$hd)
+}
+
+cat(paste0(
+  'Accuracy for baseline model: ',
+  round(mean(base_acc), 4),
+  ' (',
+  round(sd(base_acc), 4),
+  ')',
+  '\n'
+))
+cat(paste0(
+  'Accuracy with added LF measures: ',
+  round(mean(lf_acc), 4),
+  ' (',
+  round(sd(lf_acc), 4),
+  ')',
+  '\n'
+))
+```
+
+We now evaluate the accuracy of the expanded model with the LF summary measures
+over a varying definition of the frequency bands as before. 
+
+```{r lr_bands, fig.align='center', fig.width=7.25, fig.height=4}
+w <- seq(2, nrow(mtspec)) # candidate boundaries
+accuracy <- lapply(w, function(x) {
+  rep_summary_mat <- summarize_power(mtspec[, -1], c(1, x, nrow(mtspec) + 1))$rep %>%
+    as.data.frame() %>% 
+    rownames_to_column(var = "subject_id") %>% 
+    select(subject_id, V1) %>% 
+    rename(tmp_lf = V1)
+  gait_data_tmp <- gait_data %>% 
+    left_join(rep_summary_mat, by = "subject_id")
+
+  acc <- rep(0, nfolds)
+  for (i in 1:nfolds) {
+    train <- gait_data_tmp[fold_id != i, ]
+    test <- gait_data_tmp[fold_id == i, ]
+    glm_fit <- glm(
+      hd ~ age_yrs + height_meters + gait_speed_m_sec + tmp_lf,
+      data = train,
+      family = binomial()
+    )
+    pred <- as.numeric(
+      predict(glm_fit, newdata = test, type = 'response') > 0.5
+    )
+    acc[i] <- mean(pred == test$hd)
+  }
+  return(data.frame(freq = mtspec$freq[x], mean = mean(acc), sd = sd(acc)))
+})
+accuracy <- do.call(rbind, accuracy)
+accuracy$upper <- accuracy$mean + accuracy$sd
+accuracy$lower <- accuracy$mean - accuracy$sd
+
+ggplot(data = accuracy, aes(x = freq)) +
+  geom_line(aes(y = mean)) +
+  geom_line(aes(y = upper, color = "red"), linetype = "dashed") +
+  geom_line(aes(y = lower, color = "red"), linetype = "dashed") +
+  geom_vline(
+    xintercept = nsubpop1_cuts_freq,
+    color = "blue"
+  ) +
+  geom_hline(yintercept = max(accuracy$mean), color = "blue") +
+  geom_hline(yintercept = mean(base_acc), color = "purple") +
+  theme_bw() +
+  labs(
+    x = "Frequency Band Boundary",
+    y = "Accuracy",
+    title = "LR Accuracy with Varying Frequency Band Boundary"
+  ) +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+
+```
+
+The black solid line displays the mean cross-validated accuracy with a varying
+definition for the LF band while the red dashed lines show plus or minus one
+standard error, respectively. The blue vertical and horizontal lines indicate
+the FBAM estimated LF boundary and the maximum accuracy over all LF band definitions,
+respectively. The purple solid line marks the mean cross-validated accuracy of
+the previously constructed baseline model. Hence, the LF band defined by FBAM 
+nearly achieves the greatest cross-validated accuracy. 
