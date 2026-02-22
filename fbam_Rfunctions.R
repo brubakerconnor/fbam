@@ -68,7 +68,7 @@ fbam <- function(x, nbands = 2, nsubpop = 1, ntapers = NULL, ncores = 1, ...) {
       s_pop <- unlist(lapply(grid, function(x) x$s_pop))
       s_pop_scaled <- s_pop / max(s_pop)
 
-      s_joint <- s_band + s_pop
+      s_joint <- s_band_scaled + s_pop_scaled
       solution <- grid[[which.min(s_joint)]]
     }
   } else {
@@ -97,6 +97,8 @@ ga <- function(
   tol = 0.01,
   verbose = TRUE
 ) {
+  # print(nbands)
+  # print(nsubpop)
   if (is.vector(spec)) {
     spec <- as.matrix(spec)
   }
@@ -438,7 +440,7 @@ loss_fn <- function(pop, spec) {
       assignments <- l2_assign(spec, p$cuts, p$avg_power)
     }
     if (length(unique(assignments)) != nsubpop) {
-      return(NA)
+      return(1e10)
     }
     sum(unlist(lapply(seq(nsubpop), function(j) {
       x <- rep(p$avg_power[j, ], diff(p$cuts[j, ]))
